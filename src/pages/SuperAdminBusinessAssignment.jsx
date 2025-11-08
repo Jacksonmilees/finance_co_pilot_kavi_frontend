@@ -12,6 +12,7 @@ import {
   Loader2, Mail, Shield, Eye, EyeOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Skeleton } from '../components/ui/skeleton';
 
 export default function SuperAdminBusinessAssignment() {
   const [selectedBusiness, setSelectedBusiness] = useState(null);
@@ -85,9 +86,19 @@ export default function SuperAdminBusinessAssignment() {
           </CardHeader>
           <CardContent>
             {loadingBusinesses ? (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
-                <p className="text-gray-500 mt-2">Loading businesses...</p>
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="p-4 border rounded-lg animate-pulse">
+                    <div className="space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <div className="flex gap-4 mt-2">
+                        <Skeleton className="h-3 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : businesses.length === 0 ? (
               <div className="text-center py-8">

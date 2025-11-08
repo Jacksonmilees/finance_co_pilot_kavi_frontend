@@ -10,6 +10,7 @@ import {
   User, Building2, FileText, Settings, RefreshCw
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { CardSkeleton, Skeleton } from '../../components/ui/skeleton';
 
 export default function ActivityLogs() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,8 +95,58 @@ export default function ActivityLogs() {
 
   if (isLoading) {
     return (
-      <div className="p-8">
-        <LoadingSpinner size="lg" text="Loading activity logs..." />
+      <div className="p-8 space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+
+        {/* Filters Skeleton */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Timeline Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-start gap-4 p-4 border rounded-lg animate-pulse">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

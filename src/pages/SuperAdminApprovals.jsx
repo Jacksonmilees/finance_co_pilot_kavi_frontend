@@ -16,6 +16,7 @@ import {
   Mail, Phone, MapPin, DollarSign, FileText, Loader2, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { CardSkeleton, Skeleton } from '../components/ui/skeleton';
 
 export default function SuperAdminApprovals() {
   const { isSuperAdmin, user } = useAuth();
@@ -204,9 +205,29 @@ export default function SuperAdminApprovals() {
             </Alert>
           )}
           {loadingBusiness ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
-              <p className="text-gray-500 mt-2">Loading registrations...</p>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-full mt-4" />
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           ) : businessRegistrations.length === 0 ? (
             <Card>

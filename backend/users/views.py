@@ -11,6 +11,7 @@ from django.utils import timezone
 from datetime import timedelta
 import secrets
 from django.contrib.auth.models import User
+from django.db import models
 from .models import Business, UserProfile, Customer, Membership, BusinessInvitation, BusinessRegistration, IndividualRegistration
 from .serializers import (
     BusinessSerializer, UserSerializer, RegisterSerializer, 

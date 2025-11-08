@@ -11,7 +11,6 @@ from django.utils import timezone
 from datetime import timedelta
 import secrets
 from django.contrib.auth.models import User
-from django.db import models
 from .models import Business, UserProfile, Customer, Membership, BusinessInvitation, BusinessRegistration, IndividualRegistration
 from .serializers import (
     BusinessSerializer, UserSerializer, RegisterSerializer, 
@@ -277,6 +276,9 @@ def admin_dashboard_stats(request):
     data_entry_users = UserProfile.objects.filter(role='data_entry').count()
     owner_users = UserProfile.objects.filter(role='owner').count()
     
+    # Convert QuerySet to list for JSON serialization
+    recent_users = list(User.objects.order_by('-date_joined')[:10].values('id', 'username', 'email', 'date_joined'))
+    
     return Response({
         'total_users': total_users,
         'active_users': active_users,
@@ -285,7 +287,7 @@ def admin_dashboard_stats(request):
         'admin_users': admin_users,
         'data_entry_users': data_entry_users,
         'owner_users': owner_users,
-        'recent_users': User.objects.order_by('-date_joined')[:10].values('id', 'username', 'email', 'date_joined')
+        'recent_users': recent_users
     }, status=status.HTTP_200_OK)
 
 
@@ -860,194 +862,6 @@ def list_pending_registrations(request):
     return Response(serializer.data)
 
 
-@api_view(['GET'])
-@permission_classes([IsSuperAdmin])
-def debug_registration_counts(request):
-    """Debug endpoint to check database counts"""
-    total_count = BusinessRegistration.objects.count()
-    pending_count = BusinessRegistration.objects.filter(status='pending').count()
-    approved_count = BusinessRegistration.objects.filter(status='approved').count()
-    rejected_count = BusinessRegistration.objects.filter(status='rejected').count()
-    
-    # Get all registrations with basic info
-    all_regs = BusinessRegistration.objects.all().values('id', 'business_name', 'email', 'status', 'created_at')
-    
-    return Response({
-        'total': total_count,
-        'pending': pending_count,
-        'approved': approved_count,
-        'rejected': rejected_count,
-        'registrations': list(all_regs)
-    })
-
-
-@api_view(['GET'])
-@permission_classes([IsSuperAdmin])
-def list_all_registrations(request):
-    """List all business registrations (pending, approved, rejected)"""
-    status_filter = request.GET.get('status')
-    
-    # Debug: Log database counts
-    total_count = BusinessRegistration.objects.count()
-    pending_count = BusinessRegistration.objects.filter(status='pending').count()
-    approved_count = BusinessRegistration.objects.filter(status='approved').count()
-    rejected_count = BusinessRegistration.objects.filter(status='rejected').count()
-    
-    print(f"DEBUG - Total registrations in DB: {total_count}")
-    print(f"DEBUG - Pending: {pending_count}, Approved: {approved_count}, Rejected: {rejected_count}")
-    
-    if status_filter and status_filter != 'all':
-        registrations = BusinessRegistration.objects.filter(status=status_filter).order_by('-created_at')
-    else:
-        registrations = BusinessRegistration.objects.all().order_by('-created_at')
-    
-    print(f"DEBUG - Returning {registrations.count()} registrations")
-    
-    serializer = BusinessRegistrationSerializer(registrations, many=True)
-    return Response(serializer.data)
-
-
-@api_view(['GET'])
-@permission_classes([IsSuperAdmin])
-def list_approved_businesses(request):
-    """List all approved businesses for assignment"""
-    try:
-        # Get all businesses (approved registrations created businesses)
-        businesses = Business.objects.all().select_related('owner')
-        
-        businesses_data = []
-        for business in businesses:
-            # Get member count
-            member_count = business.memberships.filter(is_active=True).count()
-            
-            businesses_data.append({
-                'id': business.id,
-                'legal_name': business.legal_name,
-                'business_model': business.business_model,
-                'owner_email': business.owner.email if business.owner else '',
-                'owner_name': f"{business.owner.first_name} {business.owner.last_name}".strip() or business.owner.username if business.owner else '',
-                'member_count': member_count,
-                'created_at': business.created_at,
-                'registration_number': business.registration_number,
-            })
-        
-        return Response(businesses_data)
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@api_view(['POST'])
-@permission_classes([IsSuperAdmin])
-def assign_user_to_business(request):
-    """Assign a user to an approved business"""
-    try:
-        user_email = request.data.get('user_email')
-        business_id = request.data.get('business_id')
-        role = request.data.get('role', 'staff')  # Default to staff
-        
-        if not user_email or not business_id:
-            return Response(
-                {'error': 'user_email and business_id are required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Validate role
-        valid_roles = ['business_admin', 'staff', 'viewer']
-        if role not in valid_roles:
-            return Response(
-                {'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Get or create user
-        user_created = False
-        temp_password = None
-        try:
-            user = User.objects.get(email=user_email)
-        except User.DoesNotExist:
-            # Create new user if doesn't exist
-            username = user_email.split('@')[0]
-            # Make username unique if it already exists
-            base_username = username
-            counter = 1
-            while User.objects.filter(username=username).exists():
-                username = f"{base_username}{counter}"
-                counter += 1
-            
-            # Generate temporary password
-            temp_password = secrets.token_urlsafe(12)
-            
-            user = User.objects.create_user(
-                username=username,
-                email=user_email,
-                password=temp_password
-            )
-            user_created = True
-        
-        # Get business
-        try:
-            business = Business.objects.get(id=business_id)
-        except Business.DoesNotExist:
-            return Response(
-                {'error': 'Business not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Check if membership already exists
-        membership, created = Membership.objects.get_or_create(
-            business=business,
-            user=user,
-            defaults={
-                'role_in_business': role,
-                'is_active': True,
-                'invited_by': request.user
-            }
-        )
-        
-        if not created:
-            # Update existing membership
-            membership.role_in_business = role
-            membership.is_active = True
-            membership.save()
-            message = f'Updated {user.email} role to {role} in {business.legal_name}'
-        else:
-            message = f'Successfully assigned {user.email} as {role} to {business.legal_name}'
-        
-        response_data = {
-            'message': message,
-            'user_created': user_created,
-            'membership': {
-                'id': membership.id,
-                'user_email': user.email,
-                'user_name': f"{user.first_name} {user.last_name}".strip() or user.username,
-                'username': user.username,
-                'business_name': business.legal_name,
-                'role': membership.role_in_business,
-                'is_active': membership.is_active
-            }
-        }
-        
-        # Include temporary password if user was just created
-        if user_created and temp_password:
-            response_data['temporary_credentials'] = {
-                'username': user.username,
-                'email': user.email,
-                'password': temp_password,
-                'warning': 'User must change password after first login'
-            }
-        
-        return Response(response_data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-        
-    except Exception as e:
-        return Response(
-            {'error': str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
 @api_view(['POST'])
 @permission_classes([IsSuperAdmin])
 def approve_business_registration(request, registration_id):
@@ -1324,62 +1138,63 @@ def reject_individual_registration(request, registration_id):
 @permission_classes([IsSuperAdmin])
 def businesses_monitoring(request):
     """Get all businesses with monitoring data"""
+    from finance.models import Transaction, Invoice
+    from django.db.models import Sum, Count, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    
     status_filter = request.GET.get('status')
     
     businesses = Business.objects.select_related('owner').prefetch_related('memberships').all()
-    
-    # Note: Status filtering is done after fetching, based on active memberships
-    # since Business model doesn't have is_active field
     
     data = []
     for business in businesses:
         # Get user count
         user_count = business.memberships.filter(is_active=True).count()
         
+        # Determine status based on active memberships
+        has_active_members = business.memberships.filter(is_active=True).exists()
+        status = 'active' if has_active_members else 'inactive'
+        
+        # Apply status filter if provided
+        if status_filter and status_filter != 'all':
+            if status_filter == 'active' and not has_active_members:
+                continue
+            elif status_filter == 'inactive' and has_active_members:
+                continue
+        
         # Get last activity (you can customize this based on your activity tracking)
         last_activity = business.updated_at if hasattr(business, 'updated_at') else business.created_at
         
-        # Determine status based on whether business has active memberships
-        has_active_users = user_count > 0
+        # Get transaction count for this business
+        transaction_count = Transaction.objects.filter(business_id=business.id).count()
         
-        # Get approval status from BusinessRegistration
-        # Note: BusinessRegistration doesn't have a direct relationship to Business
-        # We'll check if there's a registration with matching business name and owner email
-        is_approved = True  # Default to approved for existing businesses
-        try:
-            registration = BusinessRegistration.objects.filter(
-                business_name=business.legal_name,
-                email=business.owner.email,
-                status='approved'
-            ).first()
-            if registration:
-                is_approved = True
-        except Exception:
-            pass
-            
+        # Get monthly revenue (last 30 days)
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        monthly_revenue = Transaction.objects.filter(
+            business_id=business.id,
+            transaction_type='income',
+            transaction_date__gte=thirty_days_ago
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        # Get invoice count
+        invoice_count = Invoice.objects.filter(business_id=business.id).count()
+        
         data.append({
             'id': business.id,
             'legal_name': business.legal_name,
-            'business_type': business.business_model,
+            'business_type': business.business_model or 'N/A',
             'owner_email': business.owner.email,
-            'phone_number': business.owner.profile.phone_number if hasattr(business.owner, 'profile') else None,
-            'location': f"{business.hq_city}, {business.hq_country}" if business.hq_city or business.hq_country else 'N/A',
-            'status': 'active' if has_active_users else 'inactive',
-            'is_approved': is_approved,
+            'phone_number': business.owner.userprofile.phone_number if hasattr(business.owner, 'userprofile') and business.owner.userprofile else None,
+            'location': f"{business.hq_city}, {business.hq_country}".strip(', ') if business.hq_city or business.hq_country else 'N/A',
+            'status': status,
             'created_at': business.created_at,
             'user_count': user_count,
             'last_activity': last_activity,
-            'transaction_count': 0,  # TODO: Add actual transaction count
-            'document_count': 0,  # TODO: Add actual document count
-            'monthly_revenue': 0,  # TODO: Add actual revenue
+            'transaction_count': transaction_count,
+            'document_count': invoice_count,  # Using invoice count as document count
+            'monthly_revenue': float(monthly_revenue),
         })
-    
-    # Apply status filter if provided
-    if status_filter and status_filter != 'all':
-        if status_filter == 'active':
-            data = [b for b in data if b['status'] == 'active']
-        elif status_filter == 'inactive':
-            data = [b for b in data if b['status'] == 'inactive']
     
     return Response(data)
 
@@ -1388,18 +1203,17 @@ def businesses_monitoring(request):
 @permission_classes([IsSuperAdmin])
 def business_summary(request):
     """Get business summary statistics"""
-    from django.db.models import Count
-    from datetime import datetime, timedelta
+    from django.db.models import Count, Q
+    from django.utils import timezone
+    from datetime import datetime
     
     total = Business.objects.count()
     
-    # Count businesses with active memberships
-    businesses_with_users = Business.objects.annotate(
-        active_members=Count('memberships', filter=models.Q(memberships__is_active=True))
-    ).filter(active_members__gt=0).count()
+    # Count active businesses (those with active memberships)
+    active = Business.objects.filter(memberships__is_active=True).distinct().count()
     
     # Count businesses created this month
-    this_month_start = datetime.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    this_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     this_month = Business.objects.filter(created_at__gte=this_month_start).count()
     
     # Total users across all businesses
@@ -1407,8 +1221,8 @@ def business_summary(request):
     
     return Response({
         'total': total,
-        'active': businesses_with_users,
-        'inactive': total - businesses_with_users,
+        'active': active,
+        'inactive': total - active,
         'this_month': this_month,
         'total_users': total_users
     })
@@ -1475,9 +1289,425 @@ def upload_document(request):
 
 
 @api_view(['GET'])
-@permission_classes([permissions.IsAuthenticated])
-def list_documents(request):
-    """List all documents - placeholder endpoint until Document model is created"""
-    # This is a placeholder that returns an empty list
-    # TODO: Create Document model and implement proper document management
-    return Response([], status=status.HTTP_200_OK)
+@permission_classes([IsSuperAdmin])
+def list_all_businesses(request):
+    """List all businesses for super admin"""
+    businesses = Business.objects.select_related('owner').all().order_by('-created_at')
+    
+    data = [{
+        'id': business.id,
+        'legal_name': business.legal_name,
+        'dba_name': business.dba_name,
+        'owner_id': business.owner.id,
+        'owner_email': business.owner.email,
+        'owner_name': f"{business.owner.first_name} {business.owner.last_name}".strip() or business.owner.username,
+        'hq_city': business.hq_city,
+        'hq_country': business.hq_country,
+        'business_model': business.business_model,
+        'created_at': business.created_at
+    } for business in businesses]
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def list_all_admins(request):
+    """List all admin users (users with admin role or business_admin memberships)"""
+    # Get users with admin role in profile
+    admin_profiles = UserProfile.objects.filter(role='admin').select_related('user')
+    
+    # Get users who are business admins
+    business_admin_memberships = Membership.objects.filter(
+        role_in_business='business_admin',
+        is_active=True
+    ).select_related('user').distinct()
+    
+    admin_users = set()
+    
+    # Add users with admin role
+    for profile in admin_profiles:
+        admin_users.add(profile.user)
+    
+    # Add users who are business admins
+    for membership in business_admin_memberships:
+        admin_users.add(membership.user)
+    
+    data = [{
+        'id': user.id,
+        'username': user.username,
+        'email': user.email,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'full_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+        'is_superuser': user.is_superuser,
+        'role': user.userprofile.role if hasattr(user, 'userprofile') else None
+    } for user in admin_users]
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsSuperAdmin])
+def create_business(request):
+    """Super admin can create a new business"""
+    from .serializers import BusinessSerializer
+    
+    # Get owner_id from request, default to super admin if not provided
+    owner_id = request.data.get('owner_id')
+    if not owner_id:
+        # Use the super admin as owner
+        owner = request.user
+    else:
+        try:
+            owner = User.objects.get(id=owner_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Owner user not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Create business data
+    business_data = request.data.copy()
+    business_data['owner'] = owner.id
+    
+    serializer = BusinessSerializer(data=business_data)
+    if serializer.is_valid():
+        business = serializer.save(owner=owner)
+        
+        # Create membership for owner as business_admin if not already exists
+        Membership.objects.get_or_create(
+            business=business,
+            user=owner,
+            defaults={
+                'role_in_business': 'business_admin',
+                'is_active': True
+            }
+        )
+        
+        # Log the activity
+        from core.views import log_activity
+        log_activity(
+            user=request.user,
+            action=f"Created business: {business.legal_name}",
+            resource_type="business",
+            resource_id=business.id,
+            details=f"Business created by super admin. Owner: {owner.email}",
+            request=request,
+            severity='info'
+        )
+        
+        return Response({
+            'message': 'Business created successfully',
+            'business': BusinessSerializer(business).data
+        }, status=status.HTTP_201_CREATED)
+    
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsSuperAdmin])
+def assign_business_to_admin(request):
+    """Assign a registered business to a registered admin"""
+    business_id = request.data.get('business_id')
+    admin_id = request.data.get('admin_id')
+    
+    if not business_id or not admin_id:
+        return Response({
+            'error': 'Both business_id and admin_id are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        business = Business.objects.get(id=business_id)
+    except Business.DoesNotExist:
+        return Response({'error': 'Business not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    try:
+        admin = User.objects.get(id=admin_id)
+    except User.DoesNotExist:
+        return Response({'error': 'Admin user not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Create or update membership with business_admin role
+    membership, created = Membership.objects.get_or_create(
+        business=business,
+        user=admin,
+        defaults={
+            'role_in_business': 'business_admin',
+            'is_active': True
+        }
+    )
+    
+    if not created:
+        # Update existing membership
+        membership.role_in_business = 'business_admin'
+        membership.is_active = True
+        membership.save()
+    
+    # Log the activity
+    from core.views import log_activity
+    log_activity(
+        user=request.user,
+        action=f"Assigned business {business.legal_name} to admin {admin.email}",
+        resource_type="membership",
+        resource_id=membership.id,
+        details=f"Business {business.legal_name} assigned to admin {admin.email} by super admin",
+        request=request,
+        severity='info'
+    )
+    
+    return Response({
+        'message': f'Business {business.legal_name} assigned to admin {admin.email} successfully',
+        'membership': {
+            'id': membership.id,
+            'business_id': business.id,
+            'business_name': business.legal_name,
+            'admin_id': admin.id,
+            'admin_email': admin.email,
+            'role': membership.role_in_business,
+            'is_active': membership.is_active
+        }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def business_detail(request, business_id):
+    """Get detailed information about a business including members"""
+    from finance.models import Transaction, Invoice
+    from django.db.models import Sum, Count, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    try:
+        business = Business.objects.select_related('owner', 'owner__profile').prefetch_related('memberships__user').get(id=business_id)
+    except Business.DoesNotExist:
+        return Response({'error': 'Business not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    # Get business admin (members with business_admin role)
+    business_admin_memberships = business.memberships.filter(
+        role_in_business='business_admin',
+        is_active=True
+    ).select_related('user', 'user__profile')
+    
+    business_admins = []
+    for membership in business_admin_memberships:
+        try:
+            phone_number = membership.user.profile.phone_number if hasattr(membership.user, 'profile') and membership.user.profile else None
+        except:
+            phone_number = None
+        
+        business_admins.append({
+            'id': membership.user.id,
+            'username': membership.user.username,
+            'email': membership.user.email,
+            'first_name': membership.user.first_name,
+            'last_name': membership.user.last_name,
+            'full_name': f"{membership.user.first_name} {membership.user.last_name}".strip() or membership.user.username,
+            'phone_number': phone_number,
+            'role': membership.role_in_business,
+            'joined_at': membership.created_at,
+            'is_active': membership.is_active
+        })
+    
+    # Get staff members (members with staff role - data entry)
+    staff_memberships = business.memberships.filter(
+        role_in_business='staff',
+        is_active=True
+    ).select_related('user', 'user__profile')
+    
+    staff_members = []
+    for membership in staff_memberships:
+        try:
+            phone_number = membership.user.profile.phone_number if hasattr(membership.user, 'profile') and membership.user.profile else None
+        except:
+            phone_number = None
+        
+        staff_members.append({
+            'id': membership.user.id,
+            'username': membership.user.username,
+            'email': membership.user.email,
+            'first_name': membership.user.first_name,
+            'last_name': membership.user.last_name,
+            'full_name': f"{membership.user.first_name} {membership.user.last_name}".strip() or membership.user.username,
+            'phone_number': phone_number,
+            'role': membership.role_in_business,
+            'joined_at': membership.created_at,
+            'is_active': membership.is_active
+        })
+    
+    # Get financial stats
+    transactions = Transaction.objects.filter(business_id=business.id)
+    total_transactions = transactions.count()
+    
+    # Monthly revenue (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    monthly_revenue = transactions.filter(
+        transaction_type='income',
+        transaction_date__gte=thirty_days_ago
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    # Total income and expenses
+    total_income = transactions.filter(transaction_type='income').aggregate(total=Sum('amount'))['total'] or 0
+    total_expenses = transactions.filter(transaction_type='expense').aggregate(total=Sum('amount'))['total'] or 0
+    
+    # Invoice stats
+    invoices = Invoice.objects.filter(business_id=business.id)
+    total_invoices = invoices.count()
+    paid_invoices = invoices.filter(status='paid').count()
+    pending_invoices = invoices.filter(status__in=['draft', 'sent']).count()
+    overdue_invoices = invoices.filter(status='overdue').count()
+    
+    # Customer count
+    from users.models import Customer
+    customer_count = Customer.objects.filter(business_id=business.id).count()
+    
+    # Total members
+    total_members = business.memberships.filter(is_active=True).count()
+    
+    return Response({
+        'business': {
+            'id': business.id,
+            'legal_name': business.legal_name,
+            'dba_name': business.dba_name,
+            'website': business.website,
+            'registration_number': business.registration_number,
+            'hq_city': business.hq_city,
+            'hq_country': business.hq_country,
+            'business_model': business.business_model,
+            'year_founded': business.year_founded,
+            'employee_count': business.employee_count,
+            'created_at': business.created_at,
+            'updated_at': business.updated_at,
+            'owner': {
+                'id': business.owner.id,
+                'username': business.owner.username,
+                'email': business.owner.email,
+                'first_name': business.owner.first_name,
+                'last_name': business.owner.last_name,
+                'full_name': f"{business.owner.first_name} {business.owner.last_name}".strip() or business.owner.username
+            }
+        },
+        'business_admins': business_admins,
+        'staff_members': staff_members,
+        'stats': {
+            'total_members': total_members,
+            'total_transactions': total_transactions,
+            'monthly_revenue': float(monthly_revenue),
+            'total_income': float(total_income),
+            'total_expenses': float(total_expenses),
+            'net_profit': float(total_income - total_expenses),
+            'total_invoices': total_invoices,
+            'paid_invoices': paid_invoices,
+            'pending_invoices': pending_invoices,
+            'overdue_invoices': overdue_invoices,
+            'customer_count': customer_count
+        }
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def list_available_staff(request):
+    """List all users available to be assigned as staff (data entry) to a business"""
+    # Get all active users except superusers
+    users = User.objects.filter(is_active=True).exclude(is_superuser=True).select_related('profile').order_by('username')
+    
+    data = []
+    for user in users:
+        try:
+            profile = user.profile
+            role = profile.role if profile else None
+        except:
+            role = None
+        
+        data.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'full_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+            'role': role,
+            'is_active': user.is_active,
+            'date_joined': user.date_joined
+        })
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsSuperAdmin])
+def assign_staff_to_business(request):
+    """Assign staff members (data entry users) to a business"""
+    business_id = request.data.get('business_id')
+    user_ids = request.data.get('user_ids', [])
+    
+    if not business_id:
+        return Response({
+            'error': 'business_id is required'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if not user_ids or not isinstance(user_ids, list):
+        return Response({
+            'error': 'user_ids must be a non-empty list'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        business = Business.objects.get(id=business_id)
+    except Business.DoesNotExist:
+        return Response({'error': 'Business not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    assigned_memberships = []
+    errors = []
+    
+    for user_id in user_ids:
+        try:
+            user = User.objects.get(id=user_id)
+            
+            # Create or update membership with staff role
+            membership, created = Membership.objects.get_or_create(
+                business=business,
+                user=user,
+                defaults={
+                    'role_in_business': 'staff',
+                    'is_active': True,
+                    'invited_by': request.user
+                }
+            )
+            
+            if not created:
+                # Update existing membership to staff role if needed
+                if membership.role_in_business != 'staff':
+                    membership.role_in_business = 'staff'
+                membership.is_active = True
+                membership.save()
+            
+            assigned_memberships.append({
+                'id': membership.id,
+                'user_id': user.id,
+                'user_email': user.email,
+                'user_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+                'role': membership.role_in_business,
+                'is_active': membership.is_active,
+                'created': created
+            })
+            
+        except User.DoesNotExist:
+            errors.append(f'User with id {user_id} not found')
+        except Exception as e:
+            errors.append(f'Error assigning user {user_id}: {str(e)}')
+    
+    # Log the activity
+    from core.views import log_activity
+    log_activity(
+        user=request.user,
+        action=f"Assigned {len(assigned_memberships)} staff member(s) to business {business.legal_name}",
+        resource_type="membership",
+        resource_id=business.id,
+        details=f"Staff members assigned to business {business.legal_name} by super admin",
+        request=request,
+        severity='info'
+    )
+    
+    return Response({
+        'message': f'Successfully assigned {len(assigned_memberships)} staff member(s) to business {business.legal_name}',
+        'assigned_memberships': assigned_memberships,
+        'errors': errors if errors else None
+    }, status=status.HTTP_200_OK)

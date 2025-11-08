@@ -12,45 +12,23 @@ import toast from 'react-hot-toast';
 export default function Security() {
   const queryClient = useQueryClient();
 
-  const { data: securitySettings, isLoading, error } = useQuery({
+  const { data: securitySettings, isLoading } = useQuery({
     queryKey: ['admin-security-settings'],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/users/admin/security/');
-        return response;
-      } catch (error) {
-        console.error('❌ Security settings endpoint error:', error.message);
-        // Return fallback data when backend is unavailable
-        return {
-          security_score: 0,
-          failed_logins_24h: 0,
-          active_sessions: 0,
-          require_2fa: false,
-          password_complexity: true,
-          session_timeout: true,
-          login_attempt_limit: true,
-          ip_whitelist: false
-        };
-      }
+      const response = await apiClient.request('/users/admin/security/');
+      return response;
     },
     staleTime: 60000,
     cacheTime: 300000,
-    retry: 1
   });
 
   const { data: recentActivity } = useQuery({
     queryKey: ['admin-security-activity'],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/users/admin/security/activity/');
-        return response;
-      } catch (error) {
-        console.error('❌ Security activity endpoint error:', error.message);
-        return [];
-      }
+      const response = await apiClient.request('/users/admin/security/activity/');
+      return response;
     },
     staleTime: 30000,
-    retry: 1
   });
 
   const updateSettingMutation = useMutation({
@@ -82,23 +60,6 @@ export default function Security() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Backend Error Banner */}
-      {error && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
-              <div>
-                <p className="font-semibold text-amber-900">Security Endpoint Unavailable</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  The security settings endpoint is not yet implemented. Showing default settings.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <Shield className="w-8 h-8 text-red-600" />

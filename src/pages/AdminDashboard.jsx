@@ -11,10 +11,17 @@ import {
   Edit,
   Save,
   X,
-  RefreshCw
+  RefreshCw,
+  ArrowRight,
+  Activity,
+  BarChart3,
+  Settings,
+  Clock,
+  CheckCircle
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -26,7 +33,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { apiClient } from "@/lib/apiClient";
 import toast from "react-hot-toast";
-import { CardSkeleton } from "../components/ui/skeleton";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function AdminDashboard() {
   const queryClient = useQueryClient();
@@ -36,18 +43,38 @@ export default function AdminDashboard() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState("");
 
-  const { data: adminStats, isLoading: loadingStats, refetch: refetchStats } = useQuery({
+  const { data: adminStats, isLoading: loadingStats, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: ['adminStats'],
     queryFn: async () => {
       try {
-        return await apiClient.getAdminStats();
+        const response = await apiClient.getAdminStats();
+        console.log('Admin stats response:', response);
+        return response;
       } catch (error) {
         console.error('Failed to load admin stats:', error);
-        return null;
+        toast.error('Failed to load dashboard statistics');
+        // Return default stats instead of null to prevent infinite loading
+        return {
+          total_users: 0,
+          active_users: 0,
+          inactive_users: 0,
+          total_businesses: 0,
+          admin_users: 0,
+          data_entry_users: 0,
+          owner_users: 0,
+          recent_users: []
+        };
       }
     },
     enabled: !!user,
-    retry: false
+    retry: 1,
+    staleTime: 30000, // 30 seconds
+    cacheTime: 300000, // 5 minutes
+    refetchOnWindowFocus: false,
+    onError: (error) => {
+      console.error('Admin stats query error:', error);
+      toast.error('Failed to load dashboard statistics');
+    }
   });
 
   const { data: users = [], isLoading: loadingUsers, refetch: refetchUsers } = useQuery({
@@ -110,16 +137,8 @@ export default function AdminDashboard() {
     toast.success('Data refreshed');
   };
 
-  // Handle loading states
-  if (loadingStats || loadingUsers) {
-    return (
-      <div className="p-4 md:p-8 space-y-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-        <CardSkeleton />
-        <CardSkeleton />
-        <CardSkeleton />
-      </div>
-    );
-  }
+  // Handle loading states - show spinner but don't block the entire page
+  // This allows sidebar to remain clickable
 
   const stats = adminStats || {
     total_users: 0,
@@ -132,27 +151,57 @@ export default function AdminDashboard() {
     recent_users: []
   };
 
+  const quickActions = [
+    {
+      title: 'User Management',
+      description: 'Manage users, roles, and permissions',
+      icon: Users,
+      path: '#users',
+      color: 'blue'
+    },
+    {
+      title: 'Business Management',
+      description: 'View and manage registered businesses',
+      icon: Building2,
+      path: '#businesses',
+      color: 'green'
+    },
+    {
+      title: 'Settings',
+      description: 'Configure system settings',
+      icon: Settings,
+      path: '#settings',
+      color: 'purple'
+    }
+  ];
+
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      {/* Welcome Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-blue-600" />
             Admin Dashboard
-            <Shield className="w-8 h-8 text-red-500" />
           </h1>
-          <p className="text-gray-600 mt-1">
-            Welcome, {user?.full_name || user?.username || 'Admin'}. Manage all users and system overview
-          </p>
+          <p className="text-gray-600 mt-1">System Overview and Management Portal</p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          variant="outline"
-          className="border-blue-600 text-blue-600 hover:bg-blue-50"
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleRefresh}
+            variant="outline"
+            className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            disabled={loadingStats || loadingUsers}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${(loadingStats || loadingUsers) ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Badge variant="outline" className="text-green-600 border-green-600 px-3 py-1">
+            <Activity className="w-3 h-3 mr-1" />
+            System Operational
+          </Badge>
+        </div>
       </div>
 
       {/* Success/Error Alerts */}
@@ -174,105 +223,221 @@ export default function AdminDashboard() {
         </Alert>
       )}
 
-      {/* Key Metrics */}
+      {statsError && (
+        <Alert className="bg-red-50 border-red-200">
+          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            Failed to load dashboard statistics: {statsError.message || 'Unknown error'}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Total Users</CardTitle>
-            <Users className="h-5 w-5 text-blue-600" />
+        {/* Loading indicator - only shows on cards, doesn't block sidebar */}
+        {(loadingStats || loadingUsers) && (
+          <div className="col-span-full flex items-center justify-center py-8">
+            <div className="flex flex-col items-center gap-2">
+              <LoadingSpinner />
+              <p className="text-sm text-gray-600">Loading dashboard data...</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Total Users Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => document.getElementById('users')?.scrollIntoView({ behavior: 'smooth' })}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
+            <Users className="w-5 h-5 text-blue-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.total_users || 0}</div>
-            <p className="text-xs text-gray-600 mt-1">
-              {stats.active_users || 0} active users
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                {stats.active_users || 0} active
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Businesses</CardTitle>
-            <Building2 className="h-5 w-5 text-green-600" />
+        {/* Businesses Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Businesses</CardTitle>
+            <Building2 className="w-5 h-5 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.total_businesses || 0}</div>
-            <p className="text-xs text-gray-600 mt-1">
-              Total registered
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Total registered
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-red-50 to-rose-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Admin Users</CardTitle>
-            <Shield className="h-5 w-5 text-red-600" />
+        {/* Admin Users Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Admin Users</CardTitle>
+            <Shield className="w-5 h-5 text-red-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.admin_users || 0}</div>
-            <p className="text-xs text-gray-600 mt-1">
-              System administrators
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                System administrators
+              </Badge>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-purple-50 to-violet-50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">Data Entry Users</CardTitle>
-            <UserCheck className="h-5 w-5 text-purple-600" />
+        {/* Data Entry Users Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Data Entry Users</CardTitle>
+            <UserCheck className="w-5 h-5 text-purple-600" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{stats.data_entry_users || 0}</div>
-            <p className="text-xs text-gray-600 mt-1">
-              Data entry staff
-            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Data entry staff
+              </Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-none shadow-lg bg-gradient-to-br from-green-50 to-emerald-50">
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            const colorClasses = {
+              blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+              green: 'bg-green-50 text-green-600 hover:bg-green-100',
+              amber: 'bg-amber-50 text-amber-600 hover:bg-amber-100',
+              purple: 'bg-purple-50 text-purple-600 hover:bg-purple-100',
+              indigo: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100',
+              red: 'bg-red-50 text-red-600 hover:bg-red-100'
+            };
+
+            return (
+              <Card 
+                key={action.path}
+                className="hover:shadow-lg transition-all cursor-pointer group"
+                onClick={() => {
+                  if (action.path === '#users') {
+                    document.getElementById('users')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-lg ${colorClasses[action.color]}`}>
+                      <Icon className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{action.title}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{action.description}</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full group-hover:bg-gray-100"
+                  >
+                    Go to {action.title}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* System Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-green-600" />
-              Owner Users
+              <Users className="w-5 h-5 text-blue-600" />
+              User Roles
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-gray-900">{stats.owner_users || 0}</p>
-            <p className="text-sm text-gray-600 mt-1">Business owners</p>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Admin Users</span>
+              <span className="font-semibold text-gray-900">{stats.admin_users || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Data Entry Users</span>
+              <span className="font-semibold text-gray-900">{stats.data_entry_users || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Owner Users</span>
+              <span className="font-semibold text-gray-900">{stats.owner_users || 0}</span>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-blue-50 to-cyan-50">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
-              Active Users
+              <TrendingUp className="w-5 h-5 text-green-600" />
+              User Status
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-gray-900">{stats.active_users || 0}</p>
-            <p className="text-sm text-gray-600 mt-1">Currently active</p>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Active Users</span>
+              <span className="font-semibold text-green-600">{stats.active_users || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Inactive Users</span>
+              <span className="font-semibold text-gray-900">{stats.inactive_users || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Total Businesses</span>
+              <span className="font-semibold text-gray-900">{stats.total_businesses || 0}</span>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg bg-gradient-to-br from-orange-50 to-amber-50">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <UserX className="w-5 h-5 text-orange-600" />
-              Inactive Users
+              <Activity className="w-5 h-5 text-purple-600" />
+              System Health
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-gray-900">{stats.inactive_users || 0}</p>
-            <p className="text-sm text-gray-600 mt-1">Disabled accounts</p>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Active Users</span>
+              <span className="font-semibold text-green-600">{stats.active_users || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Total Users</span>
+              <span className="font-semibold text-gray-900">{stats.total_users || 0}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">System Status</span>
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Operational
+              </Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Users Management */}
-      <Card className="border-none shadow-lg">
+      <Card id="users">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-gray-600" />
@@ -387,35 +552,33 @@ export default function AdminDashboard() {
 
       {/* Recent Users */}
       {stats.recent_users && stats.recent_users.length > 0 && (
-        <Card className="border-none shadow-lg">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-gray-600" />
               Recent Registrations
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {stats.recent_users.slice(0, 5).map((recentUser) => {
-                const fullUser = users.find(u => u.id === recentUser.id);
-                return (
-                  <div
-                    key={recentUser.id}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">{fullUser?.full_name || recentUser.username}</p>
-                      <p className="text-sm text-gray-500">{recentUser.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">
-                        {new Date(recentUser.date_joined).toLocaleDateString()}
-                      </p>
-                    </div>
+          <CardContent className="space-y-3">
+            {stats.recent_users.slice(0, 5).map((recentUser) => {
+              const fullUser = users.find(u => u.id === recentUser.id);
+              return (
+                <div
+                  key={recentUser.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{fullUser?.full_name || recentUser.username}</p>
+                    <p className="text-xs text-gray-500">{recentUser.email}</p>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">
+                      {new Date(recentUser.date_joined).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}

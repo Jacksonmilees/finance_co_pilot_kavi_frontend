@@ -18,13 +18,18 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 export default function SuperAdminApprovals() {
-  const { isSuperAdmin } = useAuth();
+  const { isSuperAdmin, user } = useAuth();
   const [viewingBusinessReg, setViewingBusinessReg] = useState(null);
   const [viewingIndividualReg, setViewingIndividualReg] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [assignedBusinessId, setAssignedBusinessId] = useState('');
   const [assignedRole, setAssignedRole] = useState('staff');
   const queryClient = useQueryClient();
+  
+  // Debug logging
+  console.log('SuperAdminApprovals - User:', user);
+  console.log('SuperAdminApprovals - isSuperAdmin():', isSuperAdmin());
+  console.log('SuperAdminApprovals - user.is_superuser:', user?.is_superuser);
 
   // Fetch ALL business registrations (not just pending)
   const { data: businessRegistrations = [], isLoading: loadingBusiness, error: businessError } = useQuery({
@@ -148,7 +153,16 @@ export default function SuperAdminApprovals() {
       <div className="p-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Access denied. Super Admin access required.</AlertDescription>
+          <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-semibold">Access denied. Super Admin access required.</p>
+              <div className="text-sm space-y-1">
+                <p>Username: {user?.username || 'Not logged in'}</p>
+                <p>Is Superuser: {user?.is_superuser ? 'Yes' : 'No'}</p>
+                <p>If you should have access, please contact your administrator or try logging out and back in.</p>
+              </div>
+            </div>
+          </AlertDescription>
         </Alert>
       </div>
     );

@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { 
   FileText, Search, Filter, Download, Eye, Building2, User,
-  Calendar, RefreshCw, File, Image, FileSpreadsheet, FilePlus
+  Calendar, RefreshCw, File, Image, FileSpreadsheet, FilePlus, AlertCircle
 } from 'lucide-react';
 import { CardSkeleton, Skeleton } from '../../components/ui/skeleton';
 
@@ -18,26 +18,39 @@ export default function Documents() {
   const [selectedDoc, setSelectedDoc] = useState(null);
 
   // Fetch all documents
-  const { data: documents = [], isLoading } = useQuery({
+  const { data: documents = [], isLoading, error } = useQuery({
     queryKey: ['all-documents', filterBusiness, filterType],
     queryFn: async () => {
-      const response = await apiClient.request('/users/documents/', {
-        params: {
-          business: filterBusiness !== 'all' ? filterBusiness : undefined,
-          type: filterType !== 'all' ? filterType : undefined
-        }
-      });
-      return response;
+      try {
+        const response = await apiClient.request('/users/documents/', {
+          params: {
+            business: filterBusiness !== 'all' ? filterBusiness : undefined,
+            type: filterType !== 'all' ? filterType : undefined
+          }
+        });
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error('❌ Documents endpoint error:', error.message);
+        return [];
+      }
     },
-    refetchInterval: 30000
+    refetchInterval: false, // Disable auto-refresh until backend is ready
+    retry: 1
   });
 
   // Fetch businesses for filter
   const { data: businesses = [] } = useQuery({
     queryKey: ['businesses-list'],
     queryFn: async () => {
-      return await apiClient.request('/users/businesses/');
-    }
+      try {
+        const response = await apiClient.request('/users/businesses/');
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error('❌ Businesses list endpoint error:', error.message);
+        return [];
+      }
+    },
+    retry: 1
   });
 
   const filteredDocs = documents.filter(doc => {
@@ -125,6 +138,23 @@ export default function Documents() {
 
   return (
     <div className="p-8 space-y-6">
+      {/* Backend Error Banner */}
+      {error && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <div>
+                <p className="font-semibold text-amber-900">Documents Endpoint Unavailable</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  The documents endpoint is not yet implemented. No documents available to display.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

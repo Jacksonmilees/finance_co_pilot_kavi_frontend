@@ -41,6 +41,7 @@ import Analytics from "./pages/admin/Analytics";
 import Security from "./pages/admin/Security";
 import AdminSettings from "./pages/admin/AdminSettings";
 import Documents from "./pages/admin/Documents";
+import BusinessDetail from "./pages/admin/BusinessDetail";
 
 export const router = createBrowserRouter([
   // Super Admin Routes with AdminLayout (MUST be first to avoid being caught by Layout)
@@ -62,6 +63,11 @@ export const router = createBrowserRouter([
       {
         path: "businesses",
         element: <BusinessMonitoring />,
+        errorElement: <ErrorBoundary />
+      },
+      {
+        path: "businesses/:id",
+        element: <BusinessDetail />,
         errorElement: <ErrorBoundary />
       },
       {

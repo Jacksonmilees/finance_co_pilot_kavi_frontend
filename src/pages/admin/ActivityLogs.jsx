@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { 
   Activity, Search, Filter, Download, Calendar,
-  User, Building2, FileText, Settings, RefreshCw
+  User, Building2, FileText, Settings, RefreshCw, AlertCircle
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { CardSkeleton, Skeleton } from '../../components/ui/skeleton';
@@ -47,10 +47,16 @@ export default function ActivityLogs() {
   const { data: users = [] } = useQuery({
     queryKey: ['users-for-filter'],
     queryFn: async () => {
-      const response = await apiClient.request('/users/admin/users/');
-      return response;
+      try {
+        const response = await apiClient.request('/users/admin/users/');
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error('❌ Users filter endpoint error:', error.message);
+        return [];
+      }
     },
-    staleTime: 60000
+    staleTime: 60000,
+    retry: 1
   });
 
   // Export logs
@@ -160,6 +166,23 @@ export default function ActivityLogs() {
 
   return (
     <div className="p-8 space-y-6">
+      {/* Backend Error Banner */}
+      {error && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <div>
+                <p className="font-semibold text-amber-900">Activity Logs Endpoint Unavailable</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  The activity logs endpoint is not yet implemented. No logs available to display.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

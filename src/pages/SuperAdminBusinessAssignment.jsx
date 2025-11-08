@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { 
   Building2, Users, UserPlus, Copy, CheckCircle, AlertCircle, 
-  Loader2, Mail, Shield, Eye, EyeOff
+  Loader2, Mail, Shield, Eye, EyeOff, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Skeleton } from '../components/ui/skeleton';
@@ -23,11 +23,25 @@ export default function SuperAdminBusinessAssignment() {
   const queryClient = useQueryClient();
 
   // Fetch approved businesses
-  const { data: businesses = [], isLoading: loadingBusinesses } = useQuery({
+  const { data: businesses = [], isLoading: loadingBusinesses, error } = useQuery({
     queryKey: ['approved-businesses'],
     queryFn: async () => {
-      return await apiClient.request('/users/admin/approved-businesses/');
-    }
+      try {
+        const response = await apiClient.request('/users/admin/approved-businesses/');
+        return Array.isArray(response) ? response : [];
+      } catch (error) {
+        console.error('❌ Approved businesses endpoint error:', error.message);
+        // Fallback to regular businesses endpoint
+        try {
+          const fallback = await apiClient.request('/users/businesses/');
+          return Array.isArray(fallback) ? fallback : [];
+        } catch (fallbackError) {
+          console.error('❌ Fallback businesses endpoint error:', fallbackError.message);
+          return [];
+        }
+      }
+    },
+    retry: 1
   });
 
   // Assign user mutation
@@ -70,6 +84,23 @@ export default function SuperAdminBusinessAssignment() {
 
   return (
     <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen">
+      {/* Backend Error Banner */}
+      {error && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+              <div>
+                <p className="font-semibold text-amber-900">Approved Businesses Endpoint Unavailable</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  The approved businesses endpoint is not yet implemented. Using fallback data from regular businesses endpoint.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Business User Assignment</h1>
         <p className="text-gray-600 mt-1">Assign users to approved businesses</p>

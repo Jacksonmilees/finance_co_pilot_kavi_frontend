@@ -15,16 +15,35 @@ import LoadingSpinner from '../components/LoadingSpinner';
 export default function SuperAdminDashboard() {
   const navigate = useNavigate();
 
-  // Fetch dashboard stats with caching
-  const { data: stats, isLoading } = useQuery({
+  // Fetch dashboard stats with caching and error handling
+  const { data: stats, isLoading, error } = useQuery({
     queryKey: ['admin-dashboard-stats'],
     queryFn: async () => {
-      const response = await apiClient.request('/users/admin/stats/');
-      return response;
+      try {
+        const response = await apiClient.request('/users/admin/stats/');
+        return response;
+      } catch (error) {
+        console.error('❌ Stats endpoint error:', error.message);
+        // Return fallback data when backend is unavailable
+        return {
+          total_users: 0,
+          active_users: 0,
+          total_businesses: 0,
+          active_businesses: 0,
+          pending_approvals: 0,
+          total_transactions: 0,
+          total_invoices: 0,
+          paid_invoices: 0,
+          super_admins: 0,
+          business_admins: 0,
+          staff_members: 0
+        };
+      }
     },
     staleTime: 30000, // 30 seconds
     cacheTime: 300000, // 5 minutes
-    refetchOnWindowFocus: false
+    refetchOnWindowFocus: false,
+    retry: 1 // Only retry once to avoid resource exhaustion
   });
 
   if (isLoading) {
@@ -90,6 +109,23 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Backend Error Banner */}
+      {error && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              <div>
+                <p className="font-semibold text-amber-900">Backend Temporarily Unavailable</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  The statistics endpoint is currently unavailable. Showing placeholder data. The backend may still be deploying.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

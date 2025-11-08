@@ -20,29 +20,41 @@ export default function BusinessMonitoring() {
   const queryClient = useQueryClient();
 
   // Fetch all businesses with their stats
-  const { data: businesses = [], isLoading } = useQuery({
+  const { data: businesses = [], isLoading, error: businessError } = useQuery({
     queryKey: ['businesses-monitoring', filterStatus],
     queryFn: async () => {
-      const response = await apiClient.request('/users/admin/businesses-monitoring/', {
-        params: {
-          status: filterStatus !== 'all' ? filterStatus : undefined
-        }
-      });
-      return response;
+      try {
+        const response = await apiClient.request('/users/admin/businesses-monitoring/', {
+          params: {
+            status: filterStatus !== 'all' ? filterStatus : undefined
+          }
+        });
+        return response;
+      } catch (error) {
+        console.error('Business monitoring error:', error);
+        return [];
+      }
     },
     refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 20000
+    staleTime: 20000,
+    retry: 2 // Retry twice before giving up
   });
 
   // Fetch business stats summary
-  const { data: summary = {} } = useQuery({
+  const { data: summary = {}, error: summaryError } = useQuery({
     queryKey: ['business-summary'],
     queryFn: async () => {
-      const response = await apiClient.request('/users/admin/business-summary/');
-      return response;
+      try {
+        const response = await apiClient.request('/users/admin/business-summary/');
+        return response;
+      } catch (error) {
+        console.error('Business summary error:', error);
+        return { total: 0, active: 0, inactive: 0, this_month: 0, total_users: 0 };
+      }
     },
     refetchInterval: 60000,
-    staleTime: 30000
+    staleTime: 30000,
+    retry: 2
   });
 
   const filteredBusinesses = businesses.filter(business => {

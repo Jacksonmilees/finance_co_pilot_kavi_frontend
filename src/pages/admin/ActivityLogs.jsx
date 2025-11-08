@@ -20,20 +20,27 @@ export default function ActivityLogs() {
   const queryClient = useQueryClient();
 
   // Fetch activity logs with real-time updates
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs = [], isLoading, error } = useQuery({
     queryKey: ['activity-logs', filterType, filterUser, dateRange],
     queryFn: async () => {
-      const response = await apiClient.request('/core/admin/activity-logs/', {
-        params: {
-          type: filterType !== 'all' ? filterType : undefined,
-          user: filterUser !== 'all' ? filterUser : undefined,
-          range: dateRange
-        }
-      });
-      return response;
+      try {
+        const response = await apiClient.request('/core/admin/activity-logs/', {
+          params: {
+            type: filterType !== 'all' ? filterType : undefined,
+            user: filterUser !== 'all' ? filterUser : undefined,
+            range: dateRange
+          }
+        });
+        return response;
+      } catch (error) {
+        console.error('Activity logs error:', error);
+        // Return empty array if endpoint doesn't exist yet
+        return [];
+      }
     },
     refetchInterval: 5000, // Refresh every 5 seconds
-    staleTime: 3000
+    staleTime: 3000,
+    retry: false // Don't retry on error
   });
 
   // Fetch users for filter

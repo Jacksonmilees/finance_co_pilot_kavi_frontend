@@ -212,8 +212,16 @@ export default function SuperAdminApprovals() {
             <Card>
               <CardContent className="text-center py-12">
                 <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No business registrations found</p>
-                <p className="text-sm text-gray-400 mt-2">New registrations will appear here</p>
+                <p className="text-gray-500 font-semibold">No business registrations found in database</p>
+                <p className="text-sm text-gray-400 mt-2">This means:</p>
+                <ul className="text-sm text-gray-500 mt-2 space-y-1 text-left max-w-md mx-auto">
+                  <li>• No businesses have registered yet</li>
+                  <li>• Or all registrations were deleted</li>
+                  <li>• Or the database was reset</li>
+                </ul>
+                <p className="text-sm text-blue-600 mt-4">
+                  To test: Go to <a href="/register" className="underline font-semibold">/register</a> and submit a business registration
+                </p>
               </CardContent>
             </Card>
           ) : (

@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { 
   Users, Building2, Clock, TrendingUp, Shield, Settings, 
   BarChart3, FileText, Activity, CheckCircle, XCircle, 
-  AlertCircle, ArrowRight, Zap
+  AlertCircle, ArrowRight, Zap, UserPlus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -57,6 +57,13 @@ export default function SuperAdminDashboard() {
       path: '/super-admin/approvals',
       color: 'amber',
       badge: stats?.pending_approvals || 0
+    },
+    {
+      title: 'Assign Users',
+      description: 'Assign users to approved businesses',
+      icon: UserPlus,
+      path: '/super-admin/assign-users',
+      color: 'blue'
     },
     {
       title: 'Analytics',

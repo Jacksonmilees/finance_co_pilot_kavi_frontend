@@ -1,40 +1,19 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, TrendingUp, Users, Building2, DollarSign, Activity, AlertCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Building2, DollarSign, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import apiClient from '../../lib/apiClient';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 export default function Analytics() {
-  const { data: analytics, isLoading, error } = useQuery({
+  const { data: analytics, isLoading } = useQuery({
     queryKey: ['admin-analytics'],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/users/admin/analytics/');
-        return response;
-      } catch (error) {
-        console.error('❌ Analytics endpoint error:', error.message);
-        // Return fallback data when backend is unavailable
-        return {
-          user_growth: 0,
-          business_growth: 0,
-          revenue_growth: 0,
-          active_rate: 0,
-          daily_active_users: 0,
-          weekly_active_users: 0,
-          monthly_active_users: 0,
-          avg_session_duration: '0m',
-          total_revenue: 0,
-          avg_invoice_value: 0,
-          payment_success_rate: 0,
-          businesses_with_invoices: 0,
-          top_businesses: []
-        };
-      }
+      const response = await apiClient.request('/users/admin/analytics/');
+      return response;
     },
     staleTime: 60000, // 1 minute
     cacheTime: 300000, // 5 minutes
-    retry: 1
   });
 
   if (isLoading) {
@@ -47,23 +26,6 @@ export default function Analytics() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Backend Error Banner */}
-      {error && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-              <div>
-                <p className="font-semibold text-amber-900">Analytics Endpoint Unavailable</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  The analytics endpoint is not yet implemented. Showing placeholder data.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <BarChart3 className="w-8 h-8 text-purple-600" />

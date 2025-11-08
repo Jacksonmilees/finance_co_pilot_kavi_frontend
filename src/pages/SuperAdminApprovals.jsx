@@ -16,51 +16,24 @@ import {
   Mail, Phone, MapPin, DollarSign, FileText, Loader2, AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { CardSkeleton, Skeleton } from '../components/ui/skeleton';
 
 export default function SuperAdminApprovals() {
-  const { isSuperAdmin, user } = useAuth();
+  const { isSuperAdmin } = useAuth();
   const [viewingBusinessReg, setViewingBusinessReg] = useState(null);
   const [viewingIndividualReg, setViewingIndividualReg] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [assignedBusinessId, setAssignedBusinessId] = useState('');
   const [assignedRole, setAssignedRole] = useState('staff');
   const queryClient = useQueryClient();
-  
-  // Debug logging
-  console.log('SuperAdminApprovals - User:', user);
-  console.log('SuperAdminApprovals - isSuperAdmin():', isSuperAdmin());
-  console.log('SuperAdminApprovals - user.is_superuser:', user?.is_superuser);
 
-  // Fetch ALL business registrations (not just pending)
-  const { data: businessRegistrations = [], isLoading: loadingBusiness, error: businessError } = useQuery({
-    queryKey: ['all-business-registrations'],
+  // Fetch pending business registrations
+  const { data: businessRegistrations = [], isLoading: loadingBusiness } = useQuery({
+    queryKey: ['pending-business-registrations'],
     queryFn: async () => {
-      try {
-        // Try the new endpoint first
-        const data = await apiClient.request('/users/admin/all-registrations/');
-        console.log('Business registrations fetched (all):', data);
-        return data;
-      } catch (error) {
-        // Fallback to pending-only endpoint if all-registrations doesn't exist yet
-        console.log('Falling back to pending-registrations endpoint');
-        const data = await apiClient.request('/users/admin/pending-registrations/');
-        console.log('Business registrations fetched (pending only):', data);
-        return data;
-      }
+      return await apiClient.request('/users/admin/pending-registrations/');
     },
     enabled: isSuperAdmin()
   });
-  
-  // Log any errors
-  if (businessError) {
-    console.error('Error fetching business registrations:', businessError);
-  }
-  
-  // Filter registrations by status
-  const pendingBusinessRegs = businessRegistrations.filter(reg => reg.status === 'pending');
-  const approvedBusinessRegs = businessRegistrations.filter(reg => reg.status === 'approved');
-  const rejectedBusinessRegs = businessRegistrations.filter(reg => reg.status === 'rejected');
 
   // Fetch pending individual registrations
   const { data: individualRegistrations = [], isLoading: loadingIndividual } = useQuery({
@@ -154,16 +127,7 @@ export default function SuperAdminApprovals() {
       <div className="p-6">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-2">
-              <p className="font-semibold">Access denied. Super Admin access required.</p>
-              <div className="text-sm space-y-1">
-                <p>Username: {user?.username || 'Not logged in'}</p>
-                <p>Is Superuser: {user?.is_superuser ? 'Yes' : 'No'}</p>
-                <p>If you should have access, please contact your administrator or try logging out and back in.</p>
-              </div>
-            </div>
-          </AlertDescription>
+          <AlertDescription>Access denied. Super Admin access required.</AlertDescription>
         </Alert>
       </div>
     );
@@ -181,8 +145,8 @@ export default function SuperAdminApprovals() {
           <TabsTrigger value="business" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Business Registrations
-            {pendingBusinessRegs.length > 0 && (
-              <Badge variant="destructive" className="ml-2">{pendingBusinessRegs.length} pending</Badge>
+            {businessRegistrations.length > 0 && (
+              <Badge variant="destructive" className="ml-2">{businessRegistrations.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="individual" className="flex items-center gap-2">
@@ -196,63 +160,20 @@ export default function SuperAdminApprovals() {
 
         {/* Business Registrations Tab */}
         <TabsContent value="business" className="space-y-4">
-          {businessError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Error loading registrations: {businessError.message}
-              </AlertDescription>
-            </Alert>
-          )}
           {loadingBusiness ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-6 w-48" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
-                      <Skeleton className="h-6 w-20" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-full" />
-                    </div>
-                    <Skeleton className="h-10 w-full mt-4" />
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="text-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
             </div>
           ) : businessRegistrations.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 font-semibold">No business registrations found in database</p>
-                <p className="text-sm text-gray-400 mt-2">This means:</p>
-                <ul className="text-sm text-gray-500 mt-2 space-y-1 text-left max-w-md mx-auto">
-                  <li>• No businesses have registered yet</li>
-                  <li>• Or all registrations were deleted</li>
-                  <li>• Or the database was reset</li>
-                </ul>
-                <p className="text-sm text-blue-600 mt-4">
-                  To test: Go to <a href="/register" className="underline font-semibold">/register</a> and submit a business registration
-                </p>
+                <p className="text-gray-500">No pending business registrations</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
-              {/* Pending Registrations */}
-              {pendingBusinessRegs.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-gray-900">Pending Approval ({pendingBusinessRegs.length})</h3>
-                  <div className="grid gap-4">
-                    {pendingBusinessRegs.map((registration) => (
+            <div className="grid gap-4">
+              {businessRegistrations.map((registration) => (
                 <Card key={registration.id} className="border border-gray-200">
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -368,89 +289,6 @@ export default function SuperAdminApprovals() {
                   </CardContent>
                 </Card>
               ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Approved Registrations */}
-              {approvedBusinessRegs.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-green-700">Approved ({approvedBusinessRegs.length})</h3>
-                  <div className="grid gap-4">
-                    {approvedBusinessRegs.map((registration) => (
-                      <Card key={registration.id} className="border border-green-200 bg-green-50/30">
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-xl">{registration.business_name}</CardTitle>
-                              <p className="text-sm text-gray-500 mt-1">
-                                Approved {new Date(registration.updated_at || registration.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Approved
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="grid md:grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-gray-400" />
-                              <span className="font-medium">Owner:</span> {registration.owner_name}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-4 h-4 text-gray-400" />
-                              <span className="font-medium">Email:</span> {registration.email}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Rejected Registrations */}
-              {rejectedBusinessRegs.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-lg font-semibold text-red-700">Rejected ({rejectedBusinessRegs.length})</h3>
-                  <div className="grid gap-4">
-                    {rejectedBusinessRegs.map((registration) => (
-                      <Card key={registration.id} className="border border-red-200 bg-red-50/30">
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-xl">{registration.business_name}</CardTitle>
-                              <p className="text-sm text-gray-500 mt-1">
-                                Rejected {new Date(registration.updated_at || registration.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50">
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Rejected
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                              <User className="w-4 h-4 text-gray-400" />
-                              <span className="font-medium">Owner:</span> {registration.owner_name}
-                            </div>
-                            {registration.rejection_reason && (
-                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
-                                <p className="text-xs font-medium text-red-700">Rejection Reason:</p>
-                                <p className="text-sm text-red-600">{registration.rejection_reason}</p>
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </TabsContent>

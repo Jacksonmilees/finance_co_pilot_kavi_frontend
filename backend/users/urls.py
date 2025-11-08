@@ -5,8 +5,7 @@ from .views import (
     BusinessViewSet, MembershipViewSet,
     super_admin_dashboard, business_admin_dashboard, user_dashboard,
     admin_reset_user_password, CurrentUserView,
-    register_business, check_registration_status, list_pending_registrations, list_all_registrations,
-    debug_registration_counts, list_approved_businesses, assign_user_to_business,
+    register_business, check_registration_status, list_pending_registrations,
     approve_business_registration, reject_business_registration,
     register_individual, list_pending_individual_registrations,
     approve_individual_registration, reject_individual_registration,
@@ -14,7 +13,9 @@ from .views import (
     businesses_monitoring, business_summary,
     CustomerViewSet, me, register, profile_detail, profile_update, profile_create,
     admin_users_list, admin_dashboard_stats, admin_update_user_role, admin_register_user,
-    BusinessInvitationViewSet, accept_invitation, upload_document, list_documents,
+    BusinessInvitationViewSet, accept_invitation, upload_document,
+    list_all_businesses, list_all_admins, create_business, assign_business_to_admin,
+    business_detail, list_available_staff, assign_staff_to_business,
 )
 
 router = DefaultRouter()
@@ -31,8 +32,6 @@ urlpatterns = [
     path('profile/create/', profile_create, name='profile_create'),
     # File upload endpoint
     path('upload-document/', upload_document, name='upload_document'),
-    # Documents endpoint
-    path('documents/', list_documents, name='list_documents'),
     # Admin endpoints
     path('admin/users/', admin_users_list, name='admin_users_list'),
     path('admin/users/register/', admin_register_user, name='admin_register_user'),
@@ -50,10 +49,6 @@ urlpatterns = [
     path('business-registration/', register_business, name='register_business'),
     path('business-registration/status/<str:email>/', check_registration_status, name='check_registration_status'),
     path('admin/pending-registrations/', list_pending_registrations, name='list_pending_registrations'),
-    path('admin/all-registrations/', list_all_registrations, name='list_all_registrations'),
-    path('admin/debug-registrations/', debug_registration_counts, name='debug_registration_counts'),
-    path('admin/approved-businesses/', list_approved_businesses, name='list_approved_businesses'),
-    path('admin/assign-user-to-business/', assign_user_to_business, name='assign_user_to_business'),
     path('admin/approve-registration/<int:registration_id>/', approve_business_registration, name='approve_business_registration'),
     path('admin/reject-registration/<int:registration_id>/', reject_business_registration, name='reject_business_registration'),
     # Individual Registration endpoints
@@ -65,5 +60,13 @@ urlpatterns = [
     # Business Monitoring endpoints
     path('admin/businesses-monitoring/', businesses_monitoring, name='businesses_monitoring'),
     path('admin/business-summary/', business_summary, name='business_summary'),
+    # Super Admin Business Management endpoints
+    path('admin/businesses/all/', list_all_businesses, name='list_all_businesses'),
+    path('admin/admins/all/', list_all_admins, name='list_all_admins'),
+    path('admin/businesses/create/', create_business, name='create_business'),
+    path('admin/businesses/assign/', assign_business_to_admin, name='assign_business_to_admin'),
+    path('admin/businesses/<int:business_id>/', business_detail, name='business_detail'),
+    path('admin/staff/available/', list_available_staff, name='list_available_staff'),
+    path('admin/businesses/assign-staff/', assign_staff_to_business, name='assign_staff_to_business'),
     path('', include(router.urls)),
 ]

@@ -406,6 +406,44 @@ class ApiClient {
     return this.request('/users/admin/users/');
   }
 
+  // Super Admin Business Management methods
+  async getAllBusinesses() {
+    return this.request('/users/admin/businesses/all/');
+  }
+
+  async getAllAdmins() {
+    return this.request('/users/admin/admins/all/');
+  }
+
+  async createBusiness(businessData) {
+    return this.request('/users/admin/businesses/create/', {
+      method: 'POST',
+      body: JSON.stringify(businessData),
+    });
+  }
+
+  async assignBusinessToAdmin(businessId, adminId) {
+    return this.request('/users/admin/businesses/assign/', {
+      method: 'POST',
+      body: JSON.stringify({ business_id: businessId, admin_id: adminId }),
+    });
+  }
+
+  async getBusinessDetail(businessId) {
+    return this.request(`/users/admin/businesses/${businessId}/`);
+  }
+
+  async getAvailableStaff() {
+    return this.request('/users/admin/staff/available/');
+  }
+
+  async assignStaffToBusiness(businessId, userIds) {
+    return this.request('/users/admin/businesses/assign-staff/', {
+      method: 'POST',
+      body: JSON.stringify({ business_id: businessId, user_ids: userIds }),
+    });
+  }
+
   // Business Registration methods
   async registerBusiness(registrationData) {
     return this.request('/users/business-registration/', {

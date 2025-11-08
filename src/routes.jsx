@@ -32,16 +32,14 @@ import SecurityModule from "./pages/admin/SecurityModule";
 import ActivityLogs from "./pages/admin/ActivityLogs";
 import ModuleAssignment from "./pages/admin/ModuleAssignment";
 import BusinessMonitoring from "./pages/admin/BusinessMonitoring";
+import BusinessDetail from "./pages/admin/BusinessDetail";
 import RegisterNew from "./pages/RegisterNew";
 import RegistrationStatus from "./pages/RegistrationStatus";
 import SuperAdminApprovals from "./pages/SuperAdminApprovals";
-import SuperAdminBusinessAssignment from "./pages/SuperAdminBusinessAssignment";
 import RoutingDiagnostic from "./pages/RoutingDiagnostic";
 import Analytics from "./pages/admin/Analytics";
 import Security from "./pages/admin/Security";
 import AdminSettings from "./pages/admin/AdminSettings";
-import Documents from "./pages/admin/Documents";
-import BusinessDetail from "./pages/admin/BusinessDetail";
 
 export const router = createBrowserRouter([
   // Super Admin Routes with AdminLayout (MUST be first to avoid being caught by Layout)
@@ -76,18 +74,13 @@ export const router = createBrowserRouter([
         errorElement: <ErrorBoundary />
       },
       {
-        path: "assign-users",
-        element: <SuperAdminBusinessAssignment />,
-        errorElement: <ErrorBoundary />
-      },
-      {
         path: "logs",
         element: <ActivityLogs />,
         errorElement: <ErrorBoundary />
       },
       {
         path: "documents",
-        element: <Documents />,
+        element: <div className="p-8 bg-white min-h-screen"><h1 className="text-3xl font-bold">Document Management</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>,
         errorElement: <ErrorBoundary />
       },
       {
@@ -131,7 +124,7 @@ export const router = createBrowserRouter([
     children: [
       { 
         path: "dashboard", 
-        element: <RequireAuth><RoleBasedRedirect /></RequireAuth>,
+        element: <RequireAuth><Dashboard /></RequireAuth>,
         errorElement: <ErrorBoundary />
       },
       { 

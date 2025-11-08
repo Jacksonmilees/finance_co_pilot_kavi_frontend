@@ -35,6 +35,7 @@ import BusinessMonitoring from "./pages/admin/BusinessMonitoring";
 import RegisterNew from "./pages/RegisterNew";
 import RegistrationStatus from "./pages/RegistrationStatus";
 import SuperAdminApprovals from "./pages/SuperAdminApprovals";
+import SuperAdminBusinessAssignment from "./pages/SuperAdminBusinessAssignment";
 import RoutingDiagnostic from "./pages/RoutingDiagnostic";
 import Analytics from "./pages/admin/Analytics";
 import Security from "./pages/admin/Security";
@@ -65,6 +66,11 @@ export const router = createBrowserRouter([
       {
         path: "approvals",
         element: <SuperAdminApprovals />,
+        errorElement: <ErrorBoundary />
+      },
+      {
+        path: "assign-users",
+        element: <SuperAdminBusinessAssignment />,
         errorElement: <ErrorBoundary />
       },
       {

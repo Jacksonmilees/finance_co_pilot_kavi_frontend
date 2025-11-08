@@ -90,10 +90,7 @@ export default function RegisterNew() {
     setIsSubmitting(true);
 
     try {
-      const response = await apiClient.request('/users/individual-registration/', {
-        method: 'POST',
-        data: individualFormData
-      });
+      const response = await apiClient.post('/users/individual-registration/', individualFormData);
       
       setSubmitted(true);
     } catch (err) {

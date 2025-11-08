@@ -26,11 +26,11 @@ export default function SuperAdminApprovals() {
   const [assignedRole, setAssignedRole] = useState('staff');
   const queryClient = useQueryClient();
 
-  // Fetch pending business registrations
+  // Fetch ALL business registrations (not just pending)
   const { data: businessRegistrations = [], isLoading: loadingBusiness, error: businessError } = useQuery({
-    queryKey: ['pending-business-registrations'],
+    queryKey: ['all-business-registrations'],
     queryFn: async () => {
-      const data = await apiClient.request('/users/admin/pending-registrations/');
+      const data = await apiClient.request('/users/admin/all-registrations/');
       console.log('Business registrations fetched:', data);
       return data;
     },
@@ -41,6 +41,11 @@ export default function SuperAdminApprovals() {
   if (businessError) {
     console.error('Error fetching business registrations:', businessError);
   }
+  
+  // Filter registrations by status
+  const pendingBusinessRegs = businessRegistrations.filter(reg => reg.status === 'pending');
+  const approvedBusinessRegs = businessRegistrations.filter(reg => reg.status === 'approved');
+  const rejectedBusinessRegs = businessRegistrations.filter(reg => reg.status === 'rejected');
 
   // Fetch pending individual registrations
   const { data: individualRegistrations = [], isLoading: loadingIndividual } = useQuery({
@@ -152,8 +157,8 @@ export default function SuperAdminApprovals() {
           <TabsTrigger value="business" className="flex items-center gap-2">
             <Building2 className="w-4 h-4" />
             Business Registrations
-            {businessRegistrations.length > 0 && (
-              <Badge variant="destructive" className="ml-2">{businessRegistrations.length}</Badge>
+            {pendingBusinessRegs.length > 0 && (
+              <Badge variant="destructive" className="ml-2">{pendingBusinessRegs.length} pending</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="individual" className="flex items-center gap-2">
@@ -184,12 +189,18 @@ export default function SuperAdminApprovals() {
             <Card>
               <CardContent className="text-center py-12">
                 <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No pending business registrations</p>
+                <p className="text-gray-500">No business registrations found</p>
+                <p className="text-sm text-gray-400 mt-2">New registrations will appear here</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {businessRegistrations.map((registration) => (
+            <div className="space-y-6">
+              {/* Pending Registrations */}
+              {pendingBusinessRegs.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-900">Pending Approval ({pendingBusinessRegs.length})</h3>
+                  <div className="grid gap-4">
+                    {pendingBusinessRegs.map((registration) => (
                 <Card key={registration.id} className="border border-gray-200">
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -305,6 +316,89 @@ export default function SuperAdminApprovals() {
                   </CardContent>
                 </Card>
               ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Approved Registrations */}
+              {approvedBusinessRegs.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-green-700">Approved ({approvedBusinessRegs.length})</h3>
+                  <div className="grid gap-4">
+                    {approvedBusinessRegs.map((registration) => (
+                      <Card key={registration.id} className="border border-green-200 bg-green-50/30">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-xl">{registration.business_name}</CardTitle>
+                              <p className="text-sm text-gray-500 mt-1">
+                                Approved {new Date(registration.updated_at || registration.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="border-green-500 text-green-700 bg-green-50">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Approved
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid md:grid-cols-2 gap-4 text-sm">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-gray-400" />
+                              <span className="font-medium">Owner:</span> {registration.owner_name}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-4 h-4 text-gray-400" />
+                              <span className="font-medium">Email:</span> {registration.email}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Rejected Registrations */}
+              {rejectedBusinessRegs.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-red-700">Rejected ({rejectedBusinessRegs.length})</h3>
+                  <div className="grid gap-4">
+                    {rejectedBusinessRegs.map((registration) => (
+                      <Card key={registration.id} className="border border-red-200 bg-red-50/30">
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-xl">{registration.business_name}</CardTitle>
+                              <p className="text-sm text-gray-500 mt-1">
+                                Rejected {new Date(registration.updated_at || registration.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="border-red-500 text-red-700 bg-red-50">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Rejected
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-gray-400" />
+                              <span className="font-medium">Owner:</span> {registration.owner_name}
+                            </div>
+                            {registration.rejection_reason && (
+                              <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                                <p className="text-xs font-medium text-red-700">Rejection Reason:</p>
+                                <p className="text-sm text-red-600">{registration.rejection_reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </TabsContent>

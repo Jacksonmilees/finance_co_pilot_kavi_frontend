@@ -40,6 +40,7 @@ import RoutingDiagnostic from "./pages/RoutingDiagnostic";
 import Analytics from "./pages/admin/Analytics";
 import Security from "./pages/admin/Security";
 import AdminSettings from "./pages/admin/AdminSettings";
+import Documents from "./pages/admin/Documents";
 
 export const router = createBrowserRouter([
   // Super Admin Routes with AdminLayout (MUST be first to avoid being caught by Layout)
@@ -80,7 +81,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "documents",
-        element: <div className="p-8 bg-white min-h-screen"><h1 className="text-3xl font-bold">Document Management</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>,
+        element: <Documents />,
         errorElement: <ErrorBoundary />
       },
       {

@@ -30,9 +30,18 @@ export default function SuperAdminApprovals() {
   const { data: businessRegistrations = [], isLoading: loadingBusiness, error: businessError } = useQuery({
     queryKey: ['all-business-registrations'],
     queryFn: async () => {
-      const data = await apiClient.request('/users/admin/all-registrations/');
-      console.log('Business registrations fetched:', data);
-      return data;
+      try {
+        // Try the new endpoint first
+        const data = await apiClient.request('/users/admin/all-registrations/');
+        console.log('Business registrations fetched (all):', data);
+        return data;
+      } catch (error) {
+        // Fallback to pending-only endpoint if all-registrations doesn't exist yet
+        console.log('Falling back to pending-registrations endpoint');
+        const data = await apiClient.request('/users/admin/pending-registrations/');
+        console.log('Business registrations fetched (pending only):', data);
+        return data;
+      }
     },
     enabled: isSuperAdmin()
   });

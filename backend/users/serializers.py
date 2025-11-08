@@ -220,3 +220,14 @@ class IndividualRegistrationCreateSerializer(serializers.ModelSerializer):
             'full_name', 'email', 'phone_number', 'id_number', 'date_of_birth',
             'country', 'city', 'preferred_business', 'id_document_url'
         ]
+        extra_kwargs = {
+            'full_name': {'required': True},
+            'email': {'required': True},
+            'phone_number': {'required': True},
+            'id_number': {'required': True},
+            'city': {'required': True},
+            'date_of_birth': {'required': False, 'allow_null': True},
+            'country': {'required': False},
+            'preferred_business': {'required': False, 'allow_null': True},
+            'id_document_url': {'required': False, 'allow_blank': True},
+        }

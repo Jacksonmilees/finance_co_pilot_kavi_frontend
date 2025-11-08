@@ -14,7 +14,7 @@ from .views import (
     businesses_monitoring, business_summary,
     CustomerViewSet, me, register, profile_detail, profile_update, profile_create,
     admin_users_list, admin_dashboard_stats, admin_update_user_role, admin_register_user,
-    BusinessInvitationViewSet, accept_invitation, upload_document,
+    BusinessInvitationViewSet, accept_invitation, upload_document, list_documents,
 )
 
 router = DefaultRouter()
@@ -31,6 +31,8 @@ urlpatterns = [
     path('profile/create/', profile_create, name='profile_create'),
     # File upload endpoint
     path('upload-document/', upload_document, name='upload_document'),
+    # Documents endpoint
+    path('documents/', list_documents, name='list_documents'),
     # Admin endpoints
     path('admin/users/', admin_users_list, name='admin_users_list'),
     path('admin/users/register/', admin_register_user, name='admin_register_user'),

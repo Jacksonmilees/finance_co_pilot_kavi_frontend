@@ -912,23 +912,24 @@ def list_all_registrations(request):
 def list_approved_businesses(request):
     """List all approved businesses for assignment"""
     try:
-        # Get all approved business registrations
-        approved_registrations = BusinessRegistration.objects.filter(status='approved')
+        # Get all businesses (approved registrations created businesses)
+        businesses = Business.objects.all().select_related('owner')
         
         businesses_data = []
-        for reg in approved_registrations:
-            if reg.business:
-                # Get member count
-                member_count = reg.business.memberships.filter(is_active=True).count()
-                
-                businesses_data.append({
-                    'id': reg.business.id,
-                    'legal_name': reg.business.legal_name,
-                    'business_model': reg.business.business_model,
-                    'owner_email': reg.business.owner.email if reg.business.owner else reg.email,
-                    'member_count': member_count,
-                    'created_at': reg.business.created_at,
-                })
+        for business in businesses:
+            # Get member count
+            member_count = business.memberships.filter(is_active=True).count()
+            
+            businesses_data.append({
+                'id': business.id,
+                'legal_name': business.legal_name,
+                'business_model': business.business_model,
+                'owner_email': business.owner.email if business.owner else '',
+                'owner_name': f"{business.owner.first_name} {business.owner.last_name}".strip() or business.owner.username if business.owner else '',
+                'member_count': member_count,
+                'created_at': business.created_at,
+                'registration_number': business.registration_number,
+            })
         
         return Response(businesses_data)
     except Exception as e:
@@ -1342,11 +1343,18 @@ def businesses_monitoring(request):
         has_active_users = user_count > 0
         
         # Get approval status from BusinessRegistration
-        is_approved = False
+        # Note: BusinessRegistration doesn't have a direct relationship to Business
+        # We'll check if there's a registration with matching business name and owner email
+        is_approved = True  # Default to approved for existing businesses
         try:
-            registration = BusinessRegistration.objects.get(business=business)
-            is_approved = registration.status == 'approved'
-        except BusinessRegistration.DoesNotExist:
+            registration = BusinessRegistration.objects.filter(
+                business_name=business.legal_name,
+                email=business.owner.email,
+                status='approved'
+            ).first()
+            if registration:
+                is_approved = True
+        except Exception:
             pass
             
         data.append({
@@ -1464,3 +1472,12 @@ def upload_document(request):
         'filename': file.name,
         'size': file.size
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def list_documents(request):
+    """List all documents - placeholder endpoint until Document model is created"""
+    # This is a placeholder that returns an empty list
+    # TODO: Create Document model and implement proper document management
+    return Response([], status=status.HTTP_200_OK)

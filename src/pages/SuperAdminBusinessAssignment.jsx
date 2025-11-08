@@ -11,7 +11,7 @@ import {
   Building2, Users, UserPlus, Copy, CheckCircle, AlertCircle, 
   Loader2, Mail, Shield, Eye, EyeOff
 } from 'lucide-react';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { Skeleton } from '../components/ui/skeleton';
 
 export default function SuperAdminBusinessAssignment() {

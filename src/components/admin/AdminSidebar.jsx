@@ -13,8 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Bell,
-  UserPlus
+  Bell
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Badge } from '../ui/badge';
@@ -49,12 +48,6 @@ export default function AdminSidebar({ pendingCount = 0 }) {
       label: 'Approvals',
       path: '/super-admin/approvals',
       badge: pendingCount > 0 ? pendingCount : null
-    },
-    {
-      icon: UserPlus,
-      label: 'Assign Users',
-      path: '/super-admin/assign-users',
-      badge: null
     },
     {
       icon: Activity,

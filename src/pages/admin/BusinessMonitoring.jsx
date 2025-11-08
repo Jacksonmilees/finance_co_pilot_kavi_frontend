@@ -9,10 +9,9 @@ import { Badge } from '../../components/ui/badge';
 import { 
   Building2, Users, TrendingUp, Activity, Search, 
   Eye, Calendar, Mail, Phone, MapPin, DollarSign,
-  CheckCircle, XCircle, Clock, RefreshCw, FileText, AlertCircle
+  CheckCircle, XCircle, Clock, RefreshCw, FileText
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { CardSkeleton, TableSkeleton, Skeleton } from '../../components/ui/skeleton';
 
 export default function BusinessMonitoring() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,43 +19,29 @@ export default function BusinessMonitoring() {
   const queryClient = useQueryClient();
 
   // Fetch all businesses with their stats
-  const { data: businesses = [], isLoading, error: businessError } = useQuery({
+  const { data: businesses = [], isLoading } = useQuery({
     queryKey: ['businesses-monitoring', filterStatus],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/users/admin/businesses-monitoring/', {
-          params: {
-            status: filterStatus !== 'all' ? filterStatus : undefined
-          }
-        });
-        console.log('✅ Businesses loaded:', response);
-        return Array.isArray(response) ? response : [];
-      } catch (error) {
-        console.error('❌ Business monitoring error:', error);
-        console.error('Error details:', error.response?.data || error.message);
-        return [];
+      let url = '/users/admin/businesses-monitoring/';
+      if (filterStatus && filterStatus !== 'all') {
+        url += `?status=${filterStatus}`;
       }
+      const response = await apiClient.request(url);
+      return response;
     },
-    refetchInterval: false, // Disable auto-refresh until backend is fixed
-    staleTime: 20000,
-    retry: 1 // Only retry once
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 20000
   });
 
   // Fetch business stats summary
-  const { data: summary = {}, error: summaryError } = useQuery({
+  const { data: summary = {} } = useQuery({
     queryKey: ['business-summary'],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/users/admin/business-summary/');
-        return response;
-      } catch (error) {
-        console.error('Business summary error:', error);
-        return { total: 0, active: 0, inactive: 0, this_month: 0, total_users: 0 };
-      }
+      const response = await apiClient.request('/users/admin/business-summary/');
+      return response;
     },
     refetchInterval: 60000,
-    staleTime: 30000,
-    retry: 2
+    staleTime: 30000
   });
 
   const filteredBusinesses = businesses.filter(business => {
@@ -79,31 +64,8 @@ export default function BusinessMonitoring() {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-          <Skeleton className="h-10 w-24" />
-        </div>
-
-        {/* Summary Stats Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-
-        {/* Search and Filter Skeleton */}
-        <div className="flex gap-4">
-          <Skeleton className="h-10 flex-1" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-
-        {/* Table Skeleton */}
-        <TableSkeleton rows={5} cols={6} />
+      <div className="p-8">
+        <LoadingSpinner size="lg" text="Loading businesses..." />
       </div>
     );
   }
@@ -214,32 +176,11 @@ export default function BusinessMonitoring() {
 
       {/* Business List */}
       <div className="grid gap-4">
-        {businessError && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <div>
-                  <p className="font-semibold text-red-900">Unable to load businesses</p>
-                  <p className="text-sm text-red-700 mt-1">
-                    The backend is still deploying. Please wait a few minutes and refresh the page.
-                  </p>
-                  <p className="text-xs text-red-600 mt-2">
-                    Stats show {summary.total || 0} businesses, but the list endpoint is temporarily unavailable.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-        {!businessError && filteredBusinesses.length === 0 ? (
+        {filteredBusinesses.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500">No businesses found</p>
-              <p className="text-sm text-gray-400 mt-2">
-                {businesses.length > 0 ? 'Try adjusting your search or filters' : 'No businesses registered yet'}
-              </p>
             </CardContent>
           </Card>
         ) : (

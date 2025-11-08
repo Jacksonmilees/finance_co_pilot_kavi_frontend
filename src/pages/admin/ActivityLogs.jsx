@@ -7,10 +7,9 @@ import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { 
   Activity, Search, Filter, Download, Calendar,
-  User, Building2, FileText, Settings, RefreshCw, AlertCircle
+  User, Building2, FileText, Settings, RefreshCw
 } from 'lucide-react';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import { CardSkeleton, Skeleton } from '../../components/ui/skeleton';
 
 export default function ActivityLogs() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,43 +19,30 @@ export default function ActivityLogs() {
   const queryClient = useQueryClient();
 
   // Fetch activity logs with real-time updates
-  const { data: logs = [], isLoading, error } = useQuery({
+  const { data: logs = [], isLoading } = useQuery({
     queryKey: ['activity-logs', filterType, filterUser, dateRange],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/core/admin/activity-logs/', {
-          params: {
-            type: filterType !== 'all' ? filterType : undefined,
-            user: filterUser !== 'all' ? filterUser : undefined,
-            range: dateRange
-          }
-        });
-        return response;
-      } catch (error) {
-        console.error('Activity logs error:', error);
-        // Return empty array if endpoint doesn't exist yet
-        return [];
-      }
+      const response = await apiClient.request('/core/admin/activity-logs/', {
+        params: {
+          type: filterType !== 'all' ? filterType : undefined,
+          user: filterUser !== 'all' ? filterUser : undefined,
+          range: dateRange
+        }
+      });
+      return response;
     },
     refetchInterval: 5000, // Refresh every 5 seconds
-    staleTime: 3000,
-    retry: false // Don't retry on error
+    staleTime: 3000
   });
 
   // Fetch users for filter
   const { data: users = [] } = useQuery({
     queryKey: ['users-for-filter'],
     queryFn: async () => {
-      try {
-        const response = await apiClient.request('/users/admin/users/');
-        return Array.isArray(response) ? response : [];
-      } catch (error) {
-        console.error('❌ Users filter endpoint error:', error.message);
-        return [];
-      }
+      const response = await apiClient.request('/users/admin/users/');
+      return response;
     },
-    staleTime: 60000,
-    retry: 1
+    staleTime: 60000
   });
 
   // Export logs
@@ -108,81 +94,14 @@ export default function ActivityLogs() {
 
   if (isLoading) {
     return (
-      <div className="p-8 space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-24" />
-          </div>
-        </div>
-
-        {/* Stats Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-
-        {/* Filters Skeleton */}
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex gap-4">
-              <Skeleton className="h-10 flex-1" />
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-32" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Timeline Skeleton */}
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-start gap-4 p-4 border rounded-lg animate-pulse">
-                  <Skeleton className="w-10 h-10 rounded-full" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-3 w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="p-8">
+        <LoadingSpinner size="lg" text="Loading activity logs..." />
       </div>
     );
   }
 
   return (
     <div className="p-8 space-y-6">
-      {/* Backend Error Banner */}
-      {error && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-              <div>
-                <p className="font-semibold text-amber-900">Activity Logs Endpoint Unavailable</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  The activity logs endpoint is not yet implemented. No logs available to display.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-      
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

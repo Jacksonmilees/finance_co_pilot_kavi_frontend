@@ -11,13 +11,17 @@ import {
   TrendingUp,
   DollarSign,
   Receipt,
-  AlertCircle
+  AlertCircle,
+  ArrowRight,
+  Activity,
+  BarChart3
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import MetricCard from "../components/dashboard/MetricCard";
 import { apiClient } from "@/lib/apiClient";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function DataEntryDashboard() {
   const navigate = useNavigate();
@@ -67,25 +71,58 @@ export default function DataEntryDashboard() {
   // Handle loading states
   if (loadingTransactions || loadingInvoices) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p>Loading dashboard data...</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner />
       </div>
     );
   }
 
+  const quickActions = [
+    {
+      title: 'Add Transaction',
+      description: 'Create a new financial transaction',
+      icon: PlusCircle,
+      path: '/transactions?action=create',
+      color: 'green'
+    },
+    {
+      title: 'Create Invoice',
+      description: 'Generate a new invoice',
+      icon: FileText,
+      path: '/invoices?action=create',
+      color: 'blue'
+    },
+    {
+      title: 'Import Invoices',
+      description: 'Bulk import invoices from file',
+      icon: Upload,
+      path: '/invoices?action=import',
+      color: 'purple'
+    },
+    {
+      title: 'Add Client',
+      description: 'Register a new client',
+      icon: PlusCircle,
+      path: '/clients?action=create',
+      color: 'orange'
+    }
+  ];
+
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      {/* Welcome Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <BarChart3 className="w-8 h-8 text-blue-600" />
             Data Entry Dashboard
-            <FileText className="w-8 h-8 text-blue-500" />
           </h1>
-          <p className="text-gray-600 mt-1">
-            Welcome, {user?.full_name || 'User'}. Manage and input financial data
-          </p>
+          <p className="text-gray-600 mt-1">Manage and input financial data</p>
         </div>
+        <Badge variant="outline" className="text-green-600 border-green-600 px-3 py-1">
+          <Activity className="w-3 h-3 mr-1" />
+          System Operational
+        </Badge>
       </div>
 
       {showSuccess && (
@@ -97,217 +134,250 @@ export default function DataEntryDashboard() {
         </Alert>
       )}
 
-      {/* Key Metrics */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard
-          title="Today's Entries"
-          value={stats.todayEntries}
-          icon={TrendingUp}
-          color="blue"
-          subtitle="Transactions added today"
-        />
-        <MetricCard
-          title="Total Transactions"
-          value={stats.totalTransactions}
-          icon={DollarSign}
-          color="green"
-          subtitle="All time entries"
-        />
-        <MetricCard
-          title="Pending Invoices"
-          value={stats.pendingInvoices}
-          icon={Receipt}
-          color="orange"
-          subtitle="Awaiting processing"
-        />
-        <MetricCard
-          title="Quick Actions"
-          value="4"
-          icon={PlusCircle}
-          color="purple"
-          subtitle="Available actions"
-        />
+        {/* Today's Entries Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/transactions')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Today's Entries</CardTitle>
+            <TrendingUp className="w-5 h-5 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{stats.todayEntries}</div>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Transactions added today
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Total Transactions Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/transactions')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Transactions</CardTitle>
+            <DollarSign className="w-5 h-5 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{stats.totalTransactions}</div>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                All time entries
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pending Invoices Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/invoices')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Pending Invoices</CardTitle>
+            <Receipt className="w-5 h-5 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{stats.pendingInvoices}</div>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Awaiting processing
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Total Invoices Card */}
+        <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate('/invoices')}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Invoices</CardTitle>
+            <FileText className="w-5 h-5 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-gray-900">{stats.totalInvoices}</div>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                All invoices
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Quick Actions */}
-      <Card className="border-none shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <PlusCircle className="w-5 h-5 text-blue-600" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button
-              onClick={() => navigate('/transactions?action=create')}
-              className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border border-green-200"
-            >
-              <PlusCircle className="w-6 h-6 text-green-600" />
-              <span className="text-sm font-medium">Add Transaction</span>
-            </Button>
-            <Button
-              onClick={() => navigate('/invoices?action=create')}
-              className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 border border-blue-200"
-            >
-              <FileText className="w-6 h-6 text-blue-600" />
-              <span className="text-sm font-medium">Create Invoice</span>
-            </Button>
-            <Button
-              onClick={() => navigate('/invoices?action=import')}
-              className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 border border-purple-200"
-            >
-              <Upload className="w-6 h-6 text-purple-600" />
-              <span className="text-sm font-medium">Import Invoices</span>
-            </Button>
-            <Button
-              onClick={() => navigate('/clients?action=create')}
-              className="h-24 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 border border-orange-200"
-            >
-              <PlusCircle className="w-6 h-6 text-orange-600" />
-              <span className="text-sm font-medium">Add Client</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            const colorClasses = {
+              blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+              green: 'bg-green-50 text-green-600 hover:bg-green-100',
+              amber: 'bg-amber-50 text-amber-600 hover:bg-amber-100',
+              purple: 'bg-purple-50 text-purple-600 hover:bg-purple-100',
+              indigo: 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100',
+              red: 'bg-red-50 text-red-600 hover:bg-red-100',
+              orange: 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+            };
 
-      {/* Recent Transactions */}
-      <Card className="border-none shadow-lg">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="w-5 h-5 text-gray-600" />
-            Recent Transactions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {transactions.length > 0 ? (
-            <div className="space-y-3">
-              {transactions.slice(0, 5).map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      {transaction.type === 'income' ? (
-                        <TrendingUp className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <TrendingUp className="w-4 h-4 text-red-600 rotate-180" />
-                      )}
+            return (
+              <Card 
+                key={action.path}
+                className="hover:shadow-lg transition-all cursor-pointer group"
+                onClick={() => navigate(action.path)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-lg ${colorClasses[action.color]}`}>
+                      <Icon className="w-6 h-6" />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{transaction.description || 'No description'}</p>
-                      <p className="text-sm text-gray-500">
-                        {transaction.party_name || 'N/A'} • {transaction.category || 'Uncategorized'}
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{action.title}</h3>
+                  <p className="text-sm text-gray-600 mb-4">{action.description}</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full group-hover:bg-gray-100"
+                  >
+                    Go to {action.title}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Data Entry Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5 text-blue-600" />
+              Recent Transactions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {transactions.length > 0 ? (
+              <>
+                {transactions.slice(0, 5).map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'
+                      }`}>
+                        {transaction.type === 'income' ? (
+                          <TrendingUp className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <TrendingUp className="w-4 h-4 text-red-600 rotate-180" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{transaction.description || 'No description'}</p>
+                        <p className="text-xs text-gray-500">
+                          {transaction.party_name || 'N/A'} • {transaction.category || 'Uncategorized'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${
+                        transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'income' ? '+' : '-'}KES {transaction.amount?.toLocaleString() || '0'}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-bold ${
-                      transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}KES {transaction.amount?.toLocaleString() || '0'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {transaction.transaction_date ? new Date(transaction.transaction_date).toLocaleDateString() : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <Button
-                onClick={() => navigate('/transactions')}
-                variant="outline"
-                className="w-full mt-4"
-              >
-                View All Transactions
-              </Button>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No transactions yet</p>
-              <Button
-                onClick={() => navigate('/transactions?action=create')}
-                className="mt-4"
-              >
-                Create Your First Transaction
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pending Items */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-orange-600" />
-              Pending Processing
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats.pendingInvoices > 0 || stats.pendingTransactions > 0 ? (
-              <div className="space-y-3">
-                {stats.pendingInvoices > 0 && (
-                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                    <p className="font-medium text-orange-900">{stats.pendingInvoices} invoices pending</p>
-                    <p className="text-sm text-orange-700">These need your attention</p>
-                  </div>
-                )}
-                {stats.pendingTransactions > 0 && (
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <p className="font-medium text-blue-900">{stats.pendingTransactions} transactions pending</p>
-                    <p className="text-sm text-blue-700">Awaiting review</p>
-                  </div>
-                )}
-              </div>
+                ))}
+                <Button
+                  onClick={() => navigate('/transactions')}
+                  variant="outline"
+                  className="w-full mt-2"
+                >
+                  View All Transactions
+                </Button>
+              </>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-300" />
-                <p>All items processed!</p>
+              <div className="text-center py-4 text-gray-500">
+                <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                <p className="text-sm">No transactions yet</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-lg">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="text-lg flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-600" />
-              Data Entry Stats
+              Entry Statistics
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Today's Entries</span>
-                <span className="font-bold text-gray-900">{stats.todayEntries}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">This Week</span>
-                <span className="font-bold text-gray-900">
-                  {transactions.filter(t => {
-                    const weekAgo = new Date();
-                    weekAgo.setDate(weekAgo.getDate() - 7);
-                    return t.transaction_date && new Date(t.transaction_date) >= weekAgo;
-                  }).length}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">This Month</span>
-                <span className="font-bold text-gray-900">
-                  {transactions.filter(t => {
-                    const now = new Date();
-                    const month = now.getMonth();
-                    const year = now.getFullYear();
-                    return t.transaction_date && new Date(t.transaction_date).getMonth() === month && new Date(t.transaction_date).getFullYear() === year;
-                  }).length}
-                </span>
-              </div>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">Today's Entries</span>
+              <span className="font-semibold text-gray-900">{stats.todayEntries}</span>
             </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">This Week</span>
+              <span className="font-semibold text-gray-900">
+                {transactions.filter(t => {
+                  const weekAgo = new Date();
+                  weekAgo.setDate(weekAgo.getDate() - 7);
+                  return t.transaction_date && new Date(t.transaction_date) >= weekAgo;
+                }).length}
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <span className="text-sm text-gray-600">This Month</span>
+              <span className="font-semibold text-gray-900">
+                {transactions.filter(t => {
+                  const now = new Date();
+                  const month = now.getMonth();
+                  const year = now.getFullYear();
+                  return t.transaction_date && new Date(t.transaction_date).getMonth() === month && new Date(t.transaction_date).getFullYear() === year;
+                }).length}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+              Pending Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {stats.pendingInvoices > 0 || stats.pendingTransactions > 0 ? (
+              <>
+                {stats.pendingInvoices > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Pending Invoices</span>
+                    <Badge variant="destructive">{stats.pendingInvoices}</Badge>
+                  </div>
+                )}
+                {stats.pendingTransactions > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm text-gray-600">Pending Transactions</span>
+                    <Badge variant="destructive">{stats.pendingTransactions}</Badge>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-sm text-gray-600">Status</span>
+                <Badge variant="outline" className="text-green-600 border-green-600">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  All Processed
+                </Badge>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

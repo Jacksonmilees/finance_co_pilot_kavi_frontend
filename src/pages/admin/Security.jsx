@@ -7,6 +7,7 @@ import { Badge } from '../../components/ui/badge';
 import { Switch } from '../../components/ui/switch';
 import apiClient from '../../lib/apiClient';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { CardSkeleton } from '../../components/ui/skeleton';
 import toast from 'react-hot-toast';
 
 export default function Security() {
@@ -14,29 +15,22 @@ export default function Security() {
 
   const { data: securitySettings, isLoading } = useQuery({
     queryKey: ['admin-security-settings'],
-    queryFn: async () => {
-      const response = await apiClient.request('/users/admin/security/');
-      return response;
-    },
+    queryFn: () => apiClient.getAdminSecurity(),
     staleTime: 60000,
-    cacheTime: 300000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: recentActivity } = useQuery({
     queryKey: ['admin-security-activity'],
-    queryFn: async () => {
-      const response = await apiClient.request('/users/admin/security/activity/');
-      return response;
-    },
+    queryFn: () => apiClient.getAdminSecurityActivity(),
     staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const updateSettingMutation = useMutation({
     mutationFn: ({ setting, value }) =>
-      apiClient.request('/users/admin/security/update/', {
-        method: 'POST',
-        data: { setting, value }
-      }),
+      apiClient.post('/users/admin/security/update/', { setting, value }),
     onSuccess: () => {
       toast.success('Security setting updated');
       queryClient.invalidateQueries({ queryKey: ['admin-security-settings'] });
@@ -48,8 +42,17 @@ export default function Security() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
+      <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+        <CardSkeleton />
       </div>
     );
   }
@@ -59,7 +62,7 @@ export default function Security() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <Shield className="w-8 h-8 text-red-600" />

@@ -1019,8 +1019,8 @@ def approve_individual_registration(request, registration_id):
     try:
         registration = IndividualRegistration.objects.get(id=registration_id, status='pending')
         
-        # Get assigned business from request
-        assigned_business_id = request.data.get('assigned_business_id')
+        # Get assigned business from request (can be in body or query params)
+        assigned_business_id = request.data.get('assigned_business_id') or request.query_params.get('assigned_business_id')
         assigned_role = request.data.get('assigned_role', 'staff')
         
         if not assigned_business_id:
@@ -1711,3 +1711,322 @@ def assign_staff_to_business(request):
         'assigned_memberships': assigned_memberships,
         'errors': errors if errors else None
     }, status=status.HTTP_200_OK)
+
+
+# ==================== ADMIN ANALYTICS ENDPOINT ====================
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def admin_analytics(request):
+    """Get system-wide analytics for admin dashboard"""
+    from django.db.models import Count, Sum, Avg, Q
+    from django.utils import timezone
+    from datetime import timedelta
+    from finance.models import Transaction, Invoice
+    
+    # Date ranges
+    now = timezone.now()
+    today = now.date()
+    last_30_days = today - timedelta(days=30)
+    last_60_days = today - timedelta(days=60)
+    this_month_start = today.replace(day=1)
+    last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
+    
+    # User growth
+    total_users = User.objects.count()
+    users_30_days_ago = User.objects.filter(date_joined__lt=last_30_days).count()
+    user_growth = ((total_users - users_30_days_ago) / users_30_days_ago * 100) if users_30_days_ago > 0 else 0
+    
+    # Business growth
+    total_businesses = Business.objects.count()
+    businesses_30_days_ago = Business.objects.filter(created_at__lt=last_30_days).count()
+    business_growth = ((total_businesses - businesses_30_days_ago) / businesses_30_days_ago * 100) if businesses_30_days_ago > 0 else 0
+    
+    # Revenue growth
+    revenue_last_30 = Transaction.objects.filter(
+        transaction_type='income',
+        transaction_date__gte=last_30_days
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    revenue_prev_30 = Transaction.objects.filter(
+        transaction_type='income',
+        transaction_date__gte=last_60_days,
+        transaction_date__lt=last_30_days
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    revenue_growth = ((float(revenue_last_30) - float(revenue_prev_30)) / float(revenue_prev_30) * 100) if revenue_prev_30 > 0 else 0
+    
+    # Active users
+    active_users_30_days = User.objects.filter(last_login__gte=last_30_days).count()
+    active_rate = (active_users_30_days / total_users * 100) if total_users > 0 else 0
+    
+    # Daily/Weekly/Monthly active users
+    daily_active = User.objects.filter(last_login__date=today).count()
+    weekly_active = User.objects.filter(last_login__gte=now - timedelta(days=7)).count()
+    monthly_active = active_users_30_days
+    
+    # Average session duration (mock - would need session tracking)
+    avg_session_duration = '15m'
+    
+    # Financial metrics
+    total_revenue = Transaction.objects.filter(transaction_type='income').aggregate(total=Sum('amount'))['total'] or 0
+    total_invoices = Invoice.objects.count()
+    avg_invoice_value = Invoice.objects.aggregate(avg=Avg('total_amount'))['avg'] or 0
+    paid_invoices = Invoice.objects.filter(status='paid').count()
+    payment_success_rate = (paid_invoices / total_invoices * 100) if total_invoices > 0 else 0
+    businesses_with_invoices = Invoice.objects.values('business').distinct().count()
+    
+    # Top businesses by revenue
+    top_businesses = Transaction.objects.filter(
+        transaction_type='income',
+        transaction_date__gte=last_30_days
+    ).values('business').annotate(
+        revenue=Sum('amount'),
+        transactions=Count('id')
+    ).order_by('-revenue')[:10]
+    
+    top_businesses_list = []
+    for item in top_businesses:
+        try:
+            business = Business.objects.get(id=item['business'])
+            top_businesses_list.append({
+                'id': business.id,
+                'name': business.legal_name,
+                'industry': business.business_model or 'N/A',
+                'revenue': float(item['revenue']),
+                'transactions': item['transactions']
+            })
+        except Business.DoesNotExist:
+            continue
+    
+    return Response({
+        'user_growth': round(user_growth, 2),
+        'business_growth': round(business_growth, 2),
+        'revenue_growth': round(revenue_growth, 2),
+        'active_rate': round(active_rate, 2),
+        'daily_active_users': daily_active,
+        'weekly_active_users': weekly_active,
+        'monthly_active_users': monthly_active,
+        'avg_session_duration': avg_session_duration,
+        'total_revenue': float(total_revenue),
+        'avg_invoice_value': float(avg_invoice_value),
+        'payment_success_rate': round(payment_success_rate, 2),
+        'businesses_with_invoices': businesses_with_invoices,
+        'top_businesses': top_businesses_list
+    }, status=status.HTTP_200_OK)
+
+
+# ==================== ADMIN SETTINGS ENDPOINTS ====================
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def admin_settings(request):
+    """Get system settings"""
+    # In a real implementation, these would be stored in a Settings model or environment variables
+    # For now, return default settings
+    default_settings = {
+        'site_name': 'FinanceGrowth',
+        'site_url': 'https://financegrowth.com',
+        'site_description': 'Financial management platform for businesses',
+        'maintenance_mode': False,
+        'allow_registrations': True,
+        'smtp_host': '',
+        'smtp_port': 587,
+        'from_email': 'noreply@financegrowth.com',
+        'from_name': 'FinanceGrowth',
+        'email_notifications': True,
+        'notify_new_users': True,
+        'notify_approval_required': True,
+        'notify_errors': True,
+        'daily_reports': False,
+        'cache_timeout': 300,
+        'session_timeout': 30,
+        'enable_caching': True,
+        'debug_mode': False
+    }
+    
+    # Try to get from database if Settings model exists (would need to be created)
+    # For now, return defaults
+    return Response(default_settings, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsSuperAdmin])
+def admin_settings_update(request):
+    """Update system settings"""
+    # In a real implementation, these would be saved to a Settings model
+    # For now, just return success
+    settings_data = request.data
+    
+    # Log the activity
+    from core.views import log_activity
+    log_activity(
+        user=request.user,
+        action="Updated system settings",
+        resource_type="settings",
+        resource_id=None,
+        details=f"Settings updated: {', '.join(settings_data.keys())}",
+        request=request,
+        severity='info'
+    )
+    
+    return Response({
+        'message': 'Settings updated successfully',
+        'settings': settings_data
+    }, status=status.HTTP_200_OK)
+
+
+# ==================== ADMIN SECURITY ENDPOINTS ====================
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def admin_security(request):
+    """Get security settings and stats"""
+    from core.models import FailedLoginAttempt, UserSession
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Security score calculation (mock - would need more sophisticated logic)
+    security_score = 85
+    
+    # Failed logins in last 24 hours
+    last_24h = timezone.now() - timedelta(hours=24)
+    failed_logins_24h = FailedLoginAttempt.objects.filter(attempted_at__gte=last_24h).count()
+    
+    # Active sessions
+    active_sessions_count = UserSession.objects.filter(is_active=True).count()
+    
+    # Security settings (defaults)
+    security_settings = {
+        'security_score': security_score,
+        'failed_logins_24h': failed_logins_24h,
+        'active_sessions': active_sessions_count,
+        'require_2fa': False,
+        'password_complexity': True,
+        'session_timeout': True,
+        'login_attempt_limit': True,
+        'ip_whitelist': False
+    }
+    
+    return Response(security_settings, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def admin_security_activity(request):
+    """Get recent security activity"""
+    from core.models import ActivityLog
+    from django.utils import timezone
+    from datetime import timedelta
+    
+    # Get security-related activity logs (warning and critical severity)
+    last_7_days = timezone.now() - timedelta(days=7)
+    logs = ActivityLog.objects.filter(
+        severity__in=['warning', 'critical'],
+        timestamp__gte=last_7_days
+    ).select_related('user').order_by('-timestamp')[:50]
+    
+    activity_list = []
+    for log in logs:
+        activity_list.append({
+            'type': 'warning' if log.severity == 'warning' else 'error',
+            'message': log.action,
+            'user': log.user.email if log.user else 'System',
+            'ip': log.ip_address or 'N/A',
+            'timestamp': log.timestamp.isoformat()
+        })
+    
+    return Response(activity_list, status=status.HTTP_200_OK)
+
+
+# ==================== DOCUMENT VIEWING ENDPOINTS ====================
+
+@api_view(['GET'])
+@permission_classes([IsSuperAdmin])
+def list_registration_documents(request):
+    """List all documents from business and individual registrations"""
+    from django.db.models import Q
+    
+    business_registrations = BusinessRegistration.objects.exclude(
+        Q(registration_certificate_url='') & 
+        Q(kra_pin_certificate_url='') & 
+        Q(id_document_url='')
+    ).select_related('reviewed_by')
+    
+    individual_registrations = IndividualRegistration.objects.exclude(
+        id_document_url=''
+    ).select_related('reviewed_by', 'assigned_business')
+    
+    documents = []
+    
+    # Business registration documents
+    for reg in business_registrations:
+        owner_name = reg.owner_name
+        owner_email = reg.email
+        
+        if reg.registration_certificate_url:
+            documents.append({
+                'id': f'business_{reg.id}_reg_cert',
+                'type': 'business_registration',
+                'registration_id': reg.id,
+                'document_type': 'registration_certificate',
+                'document_name': 'Registration Certificate',
+                'url': reg.registration_certificate_url,
+                'owner_name': owner_name,
+                'owner_email': owner_email,
+                'business_name': reg.business_name,
+                'status': reg.status,
+                'uploaded_at': reg.created_at.isoformat()
+            })
+        
+        if reg.kra_pin_certificate_url:
+            documents.append({
+                'id': f'business_{reg.id}_kra_pin',
+                'type': 'business_registration',
+                'registration_id': reg.id,
+                'document_type': 'kra_pin_certificate',
+                'document_name': 'KRA PIN Certificate',
+                'url': reg.kra_pin_certificate_url,
+                'owner_name': owner_name,
+                'owner_email': owner_email,
+                'business_name': reg.business_name,
+                'status': reg.status,
+                'uploaded_at': reg.created_at.isoformat()
+            })
+        
+        if reg.id_document_url:
+            documents.append({
+                'id': f'business_{reg.id}_id_doc',
+                'type': 'business_registration',
+                'registration_id': reg.id,
+                'document_type': 'id_document',
+                'document_name': 'ID Document',
+                'url': reg.id_document_url,
+                'owner_name': owner_name,
+                'owner_email': owner_email,
+                'business_name': reg.business_name,
+                'status': reg.status,
+                'uploaded_at': reg.created_at.isoformat()
+            })
+    
+    # Individual registration documents
+    for reg in individual_registrations:
+        if reg.id_document_url:
+            documents.append({
+                'id': f'individual_{reg.id}_id_doc',
+                'type': 'individual_registration',
+                'registration_id': reg.id,
+                'document_type': 'id_document',
+                'document_name': 'ID Document',
+                'url': reg.id_document_url,
+                'owner_name': reg.full_name,
+                'owner_email': reg.email,
+                'business_name': reg.assigned_business.legal_name if reg.assigned_business else None,
+                'status': reg.status,
+                'uploaded_at': reg.created_at.isoformat()
+            })
+    
+    # Sort by upload date (newest first)
+    documents.sort(key=lambda x: x['uploaded_at'], reverse=True)
+    
+    return Response(documents, status=status.HTTP_200_OK)

@@ -477,7 +477,6 @@ class ApiClient {
   async createVoiceConversation(data) {
     // This would typically go to a voice conversations endpoint
     // For now, we'll store it locally or use a mock
-    console.log('Voice conversation:', data);
     return Promise.resolve({ id: Date.now(), ...data });
   }
 
@@ -502,9 +501,47 @@ class ApiClient {
       
       return this.handleResponse(response);
     } catch (error) {
-      console.error('File upload failed:', error);
       throw error;
     }
+  }
+
+  // Admin Analytics
+  async getAdminAnalytics() {
+    return this.request('/users/admin/analytics/');
+  }
+
+  // Admin Settings
+  async getAdminSettings() {
+    return this.request('/users/admin/settings/');
+  }
+
+  async updateAdminSettings(settings) {
+    return this.request('/users/admin/settings/update/', {
+      method: 'POST',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // Admin Security
+  async getAdminSecurity() {
+    return this.request('/users/admin/security/');
+  }
+
+  async getAdminSecurityActivity() {
+    return this.request('/users/admin/security/activity/');
+  }
+
+  // Documents
+  async listRegistrationDocuments() {
+    return this.request('/users/admin/documents/');
+  }
+
+  // Individual Registration
+  async approveIndividualRegistration(registrationId, data) {
+    return this.request(`/users/admin/approve-individual-registration/${registrationId}/`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Settings, Bell, Mail, Globe, Database, Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -9,6 +9,7 @@ import { Switch } from '../../components/ui/switch';
 import { Textarea } from '../../components/ui/textarea';
 import apiClient from '../../lib/apiClient';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { CardSkeleton } from '../../components/ui/skeleton';
 import toast from 'react-hot-toast';
 
 export default function AdminSettings() {
@@ -17,23 +18,20 @@ export default function AdminSettings() {
 
   const { data: systemSettings, isLoading } = useQuery({
     queryKey: ['admin-system-settings'],
-    queryFn: async () => {
-      const response = await apiClient.request('/users/admin/settings/');
-      return response;
-    },
-    onSuccess: (data) => {
-      setSettings(data);
-    },
+    queryFn: () => apiClient.getAdminSettings(),
     staleTime: 60000,
-    cacheTime: 300000,
+    gcTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
+  useEffect(() => {
+    if (systemSettings) {
+      setSettings(systemSettings);
+    }
+  }, [systemSettings]);
+
   const updateSettingsMutation = useMutation({
-    mutationFn: (data) =>
-      apiClient.request('/users/admin/settings/update/', {
-        method: 'POST',
-        data
-      }),
+    mutationFn: (data) => apiClient.updateAdminSettings(data),
     onSuccess: () => {
       toast.success('Settings updated successfully');
       queryClient.invalidateQueries({ queryKey: ['admin-system-settings'] });
@@ -45,8 +43,14 @@ export default function AdminSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
+      <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+        </div>
+        {[1, 2, 3, 4].map((i) => (
+          <CardSkeleton key={i} />
+        ))}
       </div>
     );
   }
@@ -60,7 +64,7 @@ export default function AdminSettings() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">

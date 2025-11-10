@@ -16,6 +16,8 @@ from .views import (
     BusinessInvitationViewSet, accept_invitation, upload_document,
     list_all_businesses, list_all_admins, create_business, assign_business_to_admin,
     business_detail, list_available_staff, assign_staff_to_business,
+    admin_analytics, admin_settings, admin_settings_update,
+    admin_security, admin_security_activity, list_registration_documents,
 )
 
 router = DefaultRouter()
@@ -68,5 +70,15 @@ urlpatterns = [
     path('admin/businesses/<int:business_id>/', business_detail, name='business_detail'),
     path('admin/staff/available/', list_available_staff, name='list_available_staff'),
     path('admin/businesses/assign-staff/', assign_staff_to_business, name='assign_staff_to_business'),
+    # Admin Analytics
+    path('admin/analytics/', admin_analytics, name='admin_analytics'),
+    # Admin Settings
+    path('admin/settings/', admin_settings, name='admin_settings'),
+    path('admin/settings/update/', admin_settings_update, name='admin_settings_update'),
+    # Admin Security
+    path('admin/security/', admin_security, name='admin_security'),
+    path('admin/security/activity/', admin_security_activity, name='admin_security_activity'),
+    # Documents
+    path('admin/documents/', list_registration_documents, name='list_registration_documents'),
     path('', include(router.urls)),
 ]

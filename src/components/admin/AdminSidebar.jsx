@@ -124,28 +124,6 @@ export default function AdminSidebar({ pendingCount = 0 }) {
         </div>
       </div>
 
-      {/* User Info */}
-      {!collapsed && (
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-bold">
-              {user?.username?.charAt(0).toUpperCase() || 'A'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{user?.username || 'Admin'}</p>
-              <p className="text-xs text-gray-400 truncate">{user?.email || ''}</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-gray-400 hover:text-white hover:bg-gray-700"
-            >
-              <Bell className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
         <ul className="space-y-1 px-2">
@@ -194,28 +172,56 @@ export default function AdminSidebar({ pendingCount = 0 }) {
         </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-700">
-        <Button
-          variant="ghost"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            logout();
-          }}
-          className={`w-full flex items-center gap-3 text-gray-300 hover:text-white hover:bg-red-600/20 transition-all cursor-pointer font-medium ${
-            collapsed ? 'justify-center' : 'justify-start'
-          }`}
-          style={{ 
-            pointerEvents: 'auto',
-            zIndex: 1000,
-            background: 'transparent',
-            border: 'none'
-          }}
-        >
-          <LogOut className={`${collapsed ? 'w-6 h-6' : 'w-5 h-5'}`} />
-          {!collapsed && <span>Logout</span>}
-        </Button>
+      {/* User Info & Footer */}
+      <div className="border-t border-gray-700">
+        {/* User Info - Below modules */}
+        {!collapsed && (
+          <div className="p-4 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold shadow-lg">
+                {user?.username?.charAt(0).toUpperCase() || 'A'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-sm truncate text-white">{user?.full_name || user?.username || 'Admin'}</p>
+                <p className="text-xs text-gray-400 truncate">{user?.email || ''}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-gray-400 hover:text-white hover:bg-blue-600/20 relative"
+              >
+                <Bell className="w-4 h-4" />
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-900"></span>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+        
+        {/* Logout */}
+        <div className="p-4">
+          <Button
+            variant="ghost"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              logout();
+            }}
+            className={`w-full flex items-center gap-3 text-gray-300 hover:text-white hover:bg-red-600/20 transition-all cursor-pointer font-medium ${
+              collapsed ? 'justify-center' : 'justify-start'
+            }`}
+            style={{ 
+              pointerEvents: 'auto',
+              zIndex: 1000,
+              background: 'transparent',
+              border: 'none'
+            }}
+          >
+            <LogOut className={`${collapsed ? 'w-6 h-6' : 'w-5 h-5'}`} />
+            {!collapsed && <span>Logout</span>}
+          </Button>
+        </div>
       </div>
     </div>
   );

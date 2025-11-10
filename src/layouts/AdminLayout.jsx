@@ -6,17 +6,7 @@ import apiClient from '../lib/apiClient';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function AdminLayout() {
-  const { isSuperAdmin, user } = useAuth();
-
-  console.log('🔵🔵🔵 AdminLayout RENDERING - This should show dark sidebar');
-  console.log('🔵 User:', user);
-  console.log('🔵 Is Super Admin:', isSuperAdmin());
-  console.log('🔵 Current path:', window.location.pathname);
-  
-  useEffect(() => {
-    console.log('✅✅✅ AdminLayout MOUNTED - Dark sidebar should be visible');
-    console.log('✅ Outlet will render children now');
-  }, []);
+  const { isSuperAdmin } = useAuth();
 
   // Get pending registrations count for badge
   const { data: pendingRegistrations = [] } = useQuery({

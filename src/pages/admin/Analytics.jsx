@@ -4,28 +4,39 @@ import { BarChart3, TrendingUp, Users, Building2, DollarSign, Activity } from 'l
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import apiClient from '../../lib/apiClient';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { CardSkeleton } from '../../components/ui/skeleton';
 
 export default function Analytics() {
   const { data: analytics, isLoading } = useQuery({
     queryKey: ['admin-analytics'],
-    queryFn: async () => {
-      const response = await apiClient.request('/users/admin/analytics/');
-      return response;
-    },
+    queryFn: () => apiClient.getAdminAnalytics(),
     staleTime: 60000, // 1 minute
-    cacheTime: 300000, // 5 minutes
+    gcTime: 300000, // 5 minutes (renamed from cacheTime)
+    refetchOnWindowFocus: false,
   });
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
+      <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
+        <div className="space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
       <div>
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <BarChart3 className="w-8 h-8 text-purple-600" />

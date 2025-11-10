@@ -1,0 +1,10 @@
+[33m79b0550[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m ADmin_dash
+[33m274aa29[m Merge branch 'main' of https://github.com/Jacksonmilees/finance_co_pilot_kavi_frontend
+[33mcf1f93d[m Fixed
+[33maa59182[m Merge pull request #1 from Jacksonmilees/briton
+[33mcb49f78[m[33m ([m[1;31morigin/briton[m[33m)[m housekeeping on the frontend
+[33mc860d0b[m Fixed
+[33mdeaa7f6[m Fixed
+[33mc4dbad9[m Fixed
+[33m3175d73[m Fix Vercel build error: replace sonner with react-hot-toast
+[33me419275[m Add helpful error messages and better debugging for business monitoring

@@ -100,10 +100,10 @@ export default function UserManagement() {
     
     switch (action) {
       case 'activate':
-        toast.info('Bulk activation coming soon');
+        toast('Bulk activation coming soon');
         break;
       case 'deactivate':
-        toast.info('Bulk deactivation coming soon');
+        toast('Bulk deactivation coming soon');
         break;
       case 'export':
         handleExport();
@@ -184,7 +184,7 @@ export default function UserManagement() {
             Refresh
           </Button>
           <Button
-            onClick={() => toast.info('User creation coming soon')}
+            onClick={() => toast('User creation coming soon')}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <UserPlus className="w-4 h-4 mr-2" />

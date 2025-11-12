@@ -72,7 +72,7 @@ export default function SuperAdminApprovals() {
     mutationFn: ({ registrationId, reason }) => 
       apiClient.request(`/users/admin/reject-registration/${registrationId}/`, { 
         method: 'POST',
-        data: { rejection_reason: reason }
+        body: JSON.stringify({ rejection_reason: reason })
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-business-registrations'] });
@@ -90,7 +90,10 @@ export default function SuperAdminApprovals() {
     mutationFn: ({ registrationId, assignedBusinessId, assignedRole }) => 
       apiClient.request(`/users/admin/approve-individual-registration/${registrationId}/`, { 
         method: 'POST',
-        data: { assigned_business_id: assignedBusinessId, assigned_role: assignedRole }
+        body: JSON.stringify({ 
+          assigned_business_id: Number(assignedBusinessId), 
+          assigned_role: assignedRole 
+        })
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pending-individual-registrations'] });
@@ -109,7 +112,7 @@ export default function SuperAdminApprovals() {
     mutationFn: ({ registrationId, reason }) => 
       apiClient.request(`/users/admin/reject-individual-registration/${registrationId}/`, { 
         method: 'POST',
-        data: { rejection_reason: reason }
+        body: JSON.stringify({ rejection_reason: reason })
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pending-individual-registrations'] });

@@ -48,7 +48,7 @@ export default function SuperAdminApprovals() {
   const { data: businesses = [] } = useQuery({
     queryKey: ['approved-businesses'],
     queryFn: async () => {
-      return await apiClient.request('/users/businesses/');
+      return await apiClient.request('/users/admin/businesses/all/');
     },
     enabled: isSuperAdmin()
   });

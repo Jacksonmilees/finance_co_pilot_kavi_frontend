@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import base44 from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserPlus, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ClientOnboarding({ onClose }) {
+  const { activeBusinessId, user } = useAuth();
+  const businesses = useMemo(() => {
+    return (
+      user?.memberships?.filter((membership) => membership?.is_active)?.map((membership) => ({
+        id: membership.business_id,
+        name: membership.business_name,
+        role: membership.role_in_business,
+      })) || []
+    );
+  }, [user]);
   const [formData, setFormData] = useState({
     customer_name: "",
     email: "",
@@ -18,15 +29,28 @@ export default function ClientOnboarding({ onClose }) {
     physical_address: "",
     payment_terms: "Net 30"
   });
+  const [selectedBusiness, setSelectedBusiness] = useState(
+    activeBusinessId || businesses[0]?.id || ""
+  );
   const [error, setError] = useState("");
   const queryClient = useQueryClient();
 
+  useEffect(() => {
+    if (!selectedBusiness && (activeBusinessId || businesses[0]?.id)) {
+      setSelectedBusiness(activeBusinessId || businesses[0]?.id);
+    }
+  }, [activeBusinessId, businesses, selectedBusiness]);
+
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Backend sets owner, business and onboarded_by server-side
+      if (!selectedBusiness) {
+        throw new Error("Please select a business before creating a client.");
+      }
+      // Backend requires business ID to be provided explicitly
       return await base44.entities.Customer.create({
         ...data,
-        status: "active"
+        status: "active",
+        business: Number(selectedBusiness)
       });
     },
     onSuccess: () => {
@@ -34,7 +58,7 @@ export default function ClientOnboarding({ onClose }) {
       onClose();
     },
     onError: (e) => {
-      const message = e?.message || 'Failed to create client.';
+      const message = e?.message || "Failed to create client.";
       setError(message);
     }
   });
@@ -44,6 +68,8 @@ export default function ClientOnboarding({ onClose }) {
     setError("");
     await createMutation.mutateAsync(formData);
   };
+
+  const disableSubmit = createMutation.isPending || !selectedBusiness;
 
   return (
     <Card className="border-none shadow-2xl">
@@ -66,6 +92,31 @@ export default function ClientOnboarding({ onClose }) {
             </div>
           )}
           <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="business">Assign to Business *</Label>
+              <Select
+                value={selectedBusiness?.toString() || ""}
+                onValueChange={(value) => setSelectedBusiness(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select business" />
+                </SelectTrigger>
+                <SelectContent>
+                  {businesses.length === 0 ? (
+                    <SelectItem value="" disabled>
+                      No businesses available
+                    </SelectItem>
+                  ) : (
+                    businesses.map((business) => (
+                      <SelectItem key={business.id} value={business.id.toString()}>
+                        {business.name} {business.role ? `(${business.role})` : ""}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2 md:col-span-2">
               <Label htmlFor="customer_name">Client Name *</Label>
               <Input
@@ -126,7 +177,7 @@ export default function ClientOnboarding({ onClose }) {
               />
             </div>
 
-            {formData.customer_type === 'business' && (
+            {formData.customer_type === "business" && (
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="company_name">Company Name</Label>
                 <Input
@@ -152,9 +203,9 @@ export default function ClientOnboarding({ onClose }) {
             <Button type="button" variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={createMutation.isPending}
+            <Button
+              type="submit"
+              disabled={disableSubmit}
               className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600"
             >
               {createMutation.isPending ? "Creating..." : "Onboard Client"}

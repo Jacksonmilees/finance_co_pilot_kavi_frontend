@@ -32,15 +32,22 @@ export default function Invoices() {
         return [];
       }
       try {
-        const params = { business: businessId };
+        // Pass BOTH business and user ID to backend for proper filtering
+        const params = { 
+          business: businessId,
+          user: user.id  // ✅ Backend should filter by user
+        };
         const result = await apiClient.getInvoices(params);
         // Ensure we have an array
         const invoiceArray = Array.isArray(result) ? result : (result?.results || result?.invoices || []);
-        // Filter by user ID on frontend as well (double-check)
+        
+        // Double-check filtering on frontend (defense in depth)
         const userInvoices = invoiceArray.filter(inv => {
           const invUserId = inv.user || inv.user_id || inv.user?.id;
           return invUserId && String(invUserId) === String(user?.id);
         });
+        
+        console.log(`✅ Loaded ${userInvoices.length} invoices for user ${user.id} in business ${businessId}`);
         return userInvoices;
       } catch (error) {
         console.error('Error fetching invoices:', error);

@@ -39,16 +39,22 @@ export default function Transactions() {
         return [];
       }
       try {
-        const params = { business: businessId };
+        // Pass BOTH business and user ID to backend for proper filtering
+        const params = { 
+          business: businessId,
+          user: user.id  // ✅ Backend should filter by user
+        };
         const result = await apiClient.getTransactions(params);
         // Ensure we have an array
         const transactionArray = Array.isArray(result) ? result : (result?.results || result?.transactions || []);
-        // Filter by user ID on frontend as well (double-check)
+        
+        // Double-check filtering on frontend (defense in depth)
         const userTransactions = transactionArray.filter(tx => {
           const txUserId = tx.user || tx.user_id || tx.user?.id;
           return txUserId && String(txUserId) === String(user.id);
         });
-        console.log(`✅ Loaded ${userTransactions.length} transactions for user ${user.id}`);
+        
+        console.log(`✅ Loaded ${userTransactions.length} transactions for user ${user.id} in business ${businessId}`);
         return userTransactions;
       } catch (error) {
         console.error('❌ Error fetching transactions:', error);

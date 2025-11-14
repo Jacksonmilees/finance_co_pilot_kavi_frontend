@@ -13,14 +13,15 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Bell
+  Bell,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
 export default function AdminSidebar({ pendingCount = 0 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const location = useLocation();
   const { user, logout } = useAuth();
 
@@ -78,6 +79,12 @@ export default function AdminSidebar({ pendingCount = 0 }) {
       label: 'Settings',
       path: '/super-admin/settings',
       badge: null
+    },
+    {
+      icon: Package,
+      label: 'Module Assignment',
+      path: '/super-admin/module-assignment',
+      badge: null
     }
   ];
 
@@ -87,6 +94,15 @@ export default function AdminSidebar({ pendingCount = 0 }) {
     }
     return location.pathname.startsWith(path);
   };
+
+  // Sync width with a CSS variable for AdminLayout to consume
+  React.useEffect(() => {
+    const width = collapsed ? '80px' : '256px';
+    document.documentElement.style.setProperty('--admin-sidebar-width', width);
+    return () => {
+      // optional cleanup: keep last width
+    };
+  }, [collapsed]);
 
   return (
     <div
@@ -201,16 +217,16 @@ export default function AdminSidebar({ pendingCount = 0 }) {
         
         {/* Logout */}
         <div className="p-4">
-          <Button
-            variant="ghost"
+        <Button
+          variant="ghost"
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               logout();
             }}
             className={`w-full flex items-center gap-3 text-gray-300 hover:text-white hover:bg-red-600/20 transition-all cursor-pointer font-medium ${
-              collapsed ? 'justify-center' : 'justify-start'
-            }`}
+            collapsed ? 'justify-center' : 'justify-start'
+          }`}
             style={{ 
               pointerEvents: 'auto',
               zIndex: 1000,
@@ -219,8 +235,8 @@ export default function AdminSidebar({ pendingCount = 0 }) {
             }}
           >
             <LogOut className={`${collapsed ? 'w-6 h-6' : 'w-5 h-5'}`} />
-            {!collapsed && <span>Logout</span>}
-          </Button>
+          {!collapsed && <span>Logout</span>}
+        </Button>
         </div>
       </div>
     </div>

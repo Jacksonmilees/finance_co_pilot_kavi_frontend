@@ -23,13 +23,13 @@ export default function AdminLayout() {
     <div className="flex h-screen bg-gray-50" style={{ overflow: 'hidden', position: 'relative' }}>
       <AdminSidebar pendingCount={pendingRegistrations?.length || 0} />
       
-      {/* Main Content - offset by sidebar width */}
+      {/* Main Content - offset by sidebar width (responsive to collapse) */}
       <div 
         className="flex-1 transition-all duration-300 overflow-y-auto overflow-x-hidden bg-gradient-to-br from-gray-50 to-white" 
         style={{ 
-          marginLeft: '256px',
+          marginLeft: 'var(--admin-sidebar-width, 256px)',
           minHeight: '100vh',
-          width: 'calc(100% - 256px)',
+          width: 'calc(100% - var(--admin-sidebar-width, 256px))',
           position: 'relative',
           zIndex: 1
         }}

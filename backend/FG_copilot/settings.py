@@ -104,14 +104,15 @@ DATABASES = {
     }
 }
 
-# Cache Configuration (Using Database Cache - No Redis needed!)
+# Cache Configuration (Using In-Memory Cache - No database table needed!)
+# Switched from DatabaseCache to LocMemCache for Render free tier compatibility
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'cache_table',
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'kavi-sme-cache',
         'TIMEOUT': 300,  # 5 minutes default cache timeout
         'OPTIONS': {
-            'MAX_ENTRIES': 10000
+            'MAX_ENTRIES': 1000  # Reduced for memory efficiency
         }
     }
 }
@@ -336,4 +337,28 @@ LOGGING = {
 logs_dir = BASE_DIR / 'logs'
 if not logs_dir.exists():
     os.makedirs(logs_dir, exist_ok=True)
+
+# ==================== M-PESA CONFIGURATION ====================
+# M-Pesa Daraja API credentials
+# Get these from: https://developer.safaricom.co.ke/
+
+# Sandbox credentials (for testing)
+MPESA_SANDBOX = os.getenv('MPESA_SANDBOX', 'True').lower() == 'true'
+
+# Consumer Key and Secret (from Safaricom Developer Portal)
+MPESA_CONSUMER_KEY = os.getenv('MPESA_CONSUMER_KEY', '')
+MPESA_CONSUMER_SECRET = os.getenv('MPESA_CONSUMER_SECRET', '')
+
+# Shortcode (Paybill or Till Number)
+MPESA_SHORTCODE = os.getenv('MPESA_SHORTCODE', '')
+
+# Passkey (from Safaricom Developer Portal)
+MPESA_PASSKEY = os.getenv('MPESA_PASSKEY', '')
+
+# Initiator Name and Password (for B2C payments)
+MPESA_INITIATOR_NAME = os.getenv('MPESA_INITIATOR_NAME', '')
+MPESA_INITIATOR_PASSWORD = os.getenv('MPESA_INITIATOR_PASSWORD', '')
+
+# Base URL for callbacks (your backend URL)
+BASE_URL = os.getenv('BASE_URL', 'http://localhost:8000')
 

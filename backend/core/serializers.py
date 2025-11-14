@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import ActivityLog, UserSession, FailedLoginAttempt, ModuleAssignment
+from .models import ActivityLog, UserSession, FailedLoginAttempt, ModuleAssignment, Notification
 
 
 class ActivityLogSerializer(serializers.ModelSerializer):
@@ -54,3 +54,17 @@ class ModuleAssignmentSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
         read_only_fields = ['id', 'assigned_at', 'updated_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    business_name = serializers.CharField(source='business.legal_name', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'user', 'business', 'business_name', 'title', 'message',
+            'notification_type', 'priority', 'action_url', 'action_text',
+            'resource_type', 'resource_id', 'is_read', 'read_at',
+            'created_at', 'expires_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'read_at']

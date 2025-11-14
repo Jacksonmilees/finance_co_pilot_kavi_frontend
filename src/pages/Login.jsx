@@ -163,6 +163,7 @@ export default function Login() {
               Already registered? <Button variant="link" className="p-0 h-auto text-blue-600 text-xs" onClick={() => navigate('/registration-status')}>Check status</Button>
             </p>
           </div>
+
         </CardContent>
       </Card>
     </div>

@@ -20,7 +20,7 @@ export default function SuperAdminDashboardTest() {
           <strong>User:</strong> {user?.username || 'Not logged in'}
         </div>
         <div>
-          <strong>Is Super Admin:</strong> {isSuperAdmin() ? 'YES ✅' : 'NO ❌'}
+          <strong>Is Super Admin:</strong> {isSuperAdmin() ? 'YES ' : 'NO '}
         </div>
         <div>
           <strong>Layout:</strong> This should be using AdminLayout with dark sidebar

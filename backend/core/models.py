@@ -1,5 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+import uuid
 
 User = get_user_model()
 
@@ -86,3 +88,71 @@ class ModuleAssignment(models.Model):
     
     def __str__(self):
         return f"{self.business.legal_name} - {self.module_name} ({'Enabled' if self.enabled else 'Disabled'})"
+
+
+class Notification(models.Model):
+    """In-app notifications for users"""
+    NOTIFICATION_TYPES = [
+        ('invoice_paid', 'Invoice Paid'),
+        ('invoice_overdue', 'Invoice Overdue'),
+        ('payment_received', 'Payment Received'),
+        ('payment_reminder', 'Payment Reminder'),
+        ('low_cash', 'Low Cash Alert'),
+        ('transaction_added', 'Transaction Added'),
+        ('recurring_invoice', 'Recurring Invoice Generated'),
+        ('mpesa_payment', 'M-Pesa Payment'),
+        ('system', 'System Notification'),
+        ('alert', 'Alert'),
+        ('info', 'Information'),
+    ]
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    business = models.ForeignKey('users.Business', on_delete=models.CASCADE, related_name='notifications', null=True, blank=True)
+    
+    # Notification content
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES, default='info')
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='medium')
+    
+    # Action link
+    action_url = models.CharField(max_length=500, blank=True, null=True)
+    action_text = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Related resource
+    resource_type = models.CharField(max_length=50, blank=True, null=True)  # e.g., 'invoice', 'transaction'
+    resource_id = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Status
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at', 'is_read']),
+            models.Index(fields=['business', '-created_at']),
+            models.Index(fields=['notification_type', '-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} - {self.user.email}"
+    
+    def mark_as_read(self):
+        """Mark notification as read"""
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])

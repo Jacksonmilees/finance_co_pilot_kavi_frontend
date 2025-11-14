@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Settings, Bell, Mail, Globe, Database, Save } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Settings, Bell, Mail, Globe, Database, Save, Package, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -64,19 +65,28 @@ export default function AdminSettings() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-gradient-to-br from-blue-50 to-white min-h-screen">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Settings className="w-8 h-8 text-gray-600" />
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <Settings className="w-6 h-6 md:w-8 md:h-8 text-gray-600" />
             System Settings
           </h1>
-          <p className="text-gray-600 mt-1">Configure system-wide settings and preferences</p>
+          <p className="text-gray-600 mt-1 text-sm md:text-base">Configure system-wide settings and preferences</p>
         </div>
-        <Button onClick={handleSave} disabled={updateSettingsMutation.isLoading}>
-          <Save className="w-4 h-4 mr-2" />
-          Save Changes
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+            <Link to="/super-admin/module-assignment">
+              <Package className="w-4 h-4 mr-2" />
+              Module Assignment
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+          <Button onClick={handleSave} disabled={updateSettingsMutation.isLoading}>
+            <Save className="w-4 h-4 mr-2" />
+            Save Changes
+          </Button>
+        </div>
       </div>
 
       {/* General Settings */}

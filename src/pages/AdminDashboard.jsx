@@ -560,25 +560,25 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {stats.recent_users.slice(0, 5).map((recentUser) => {
-              const fullUser = users.find(u => u.id === recentUser.id);
-              return (
-                <div
-                  key={recentUser.id}
+              {stats.recent_users.slice(0, 5).map((recentUser) => {
+                const fullUser = users.find(u => u.id === recentUser.id);
+                return (
+                  <div
+                    key={recentUser.id}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                >
-                  <div>
+                  >
+                    <div>
                     <p className="text-sm font-medium text-gray-900">{fullUser?.full_name || recentUser.username}</p>
                     <p className="text-xs text-gray-500">{recentUser.email}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">
+                        {new Date(recentUser.date_joined).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">
-                      {new Date(recentUser.date_joined).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </CardContent>
         </Card>
       )}

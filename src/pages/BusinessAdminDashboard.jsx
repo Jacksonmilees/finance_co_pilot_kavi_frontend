@@ -10,12 +10,21 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { CardSkeleton, Skeleton } from '../components/ui/skeleton';
+import QuickActions from '../components/QuickActions';
+import GettingStartedBanner from '../components/GettingStartedBanner';
 
 export default function BusinessAdminDashboard() {
   const { businessId } = useParams();
   const { isBusinessAdmin, getBusinesses } = useAuth();
   const businesses = getBusinesses();
   const activeBusinessId = businessId || businesses[0]?.id;
+  const formatKes = (value) => {
+    try {
+      return new Intl.NumberFormat('en-KE', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(Number(value || 0));
+    } catch {
+      return `KES ${Number(value || 0).toLocaleString()}`;
+    }
+  };
 
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['business-admin-dashboard', activeBusinessId],
@@ -90,36 +99,83 @@ export default function BusinessAdminDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-8 bg-white min-h-screen">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Business Dashboard</h1>
-          <p className="text-gray-600 mt-1">{stats?.business?.name || 'Business Overview'}</p>
+    <div className="px-4 md:px-6 lg:px-8 py-6 bg-white min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+      {/* Getting Started Banner */}
+      <GettingStartedBanner />
+
+      {/* Hero Header */}
+      <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 p-6 md:p-8 text-white shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 md:w-10 md:h-10 bg-white/20 rounded-lg grid place-items-center">
+                <Building2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold">Business Dashboard</h1>
+            </div>
+            <p className="text-white/80">{stats?.business?.name || 'Business Overview'}</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Button asChild className="bg-white/10 border border-white/30 text-white hover:bg-white/20">
+              <Link to="/voice-assistant">
+                <Sparkles className="w-4 h-4 mr-2" />
+                KAVI Assistant
+              </Link>
+            </Button>
+            <Button asChild className="bg-white/10 border border-white/30 text-white hover:bg-white/20">
+              <Link to={`/business/${activeBusinessId}/team`}>
+                <Users className="w-4 h-4 mr-2" />
+                Manage Team
+              </Link>
+            </Button>
+            <Button asChild className="bg-white text-blue-700 hover:bg-blue-50">
+              <Link to="/settings">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Link>
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant="outline" asChild className="border-blue-600 text-blue-600 hover:bg-blue-50">
-            <Link to="/voice-assistant">
-              <Sparkles className="w-4 h-4 mr-2" />
-              KAVI Assistant
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="border-blue-600 text-blue-600 hover:bg-blue-50">
-            <Link to={`/business/${activeBusinessId}/team`}>
-              <Users className="w-4 h-4 mr-2" />
-              Manage Team
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="border-gray-300">
-            <Link to="/settings">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
-            </Link>
-          </Button>
+      </div>
+      {/* Kenya-first compliance & payments */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-blue-200 bg-white p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-semibold text-blue-700">Connect M-Pesa (Lipa na M-Pesa)</p>
+              <p className="text-sm text-gray-600 mt-1">Enable automatic reconciliation and channel-level insights.</p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Button onClick={() => window.location.assign('/settings')} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Connect Now
+            </Button>
+            <Button variant="outline" onClick={() => window.location.assign('/transactions')} className="border-blue-600 text-blue-600 hover:bg-blue-50">
+              Review Reconciliation
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-white p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-semibold text-amber-700">KRA eTIMS Compliance</p>
+              <p className="text-sm text-gray-600 mt-1">Generate e-invoices and keep your books tax-ready.</p>
+            </div>
+          </div>
+          <div className="mt-3 flex gap-2">
+            <Button variant="outline" onClick={() => window.location.assign('/invoices')} className="border-amber-600 text-amber-700 hover:bg-amber-50">
+              Create e-Invoice
+            </Button>
+            <Button onClick={() => window.location.assign('/voice-assistant')} className="bg-amber-600 hover:bg-amber-700 text-white">
+              Ask KAVI
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Financial Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="border border-gray-200 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-700">Total Income</CardTitle>
@@ -127,7 +183,7 @@ export default function BusinessAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {stats?.financial?.currency || 'KES'} {parseFloat(stats?.financial?.total_income || 0).toLocaleString()}
+              {formatKes(stats?.financial?.total_income || 0)}
             </div>
             <p className="text-xs text-gray-500 mt-1">This month</p>
           </CardContent>
@@ -140,7 +196,7 @@ export default function BusinessAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {stats?.financial?.currency || 'KES'} {parseFloat(stats?.financial?.total_expenses || 0).toLocaleString()}
+              {formatKes(stats?.financial?.total_expenses || 0)}
             </div>
             <p className="text-xs text-gray-500 mt-1">This month</p>
           </CardContent>
@@ -153,7 +209,7 @@ export default function BusinessAdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${parseFloat(stats?.financial?.net_profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {stats?.financial?.currency || 'KES'} {parseFloat(stats?.financial?.net_profit || 0).toLocaleString()}
+              {formatKes(stats?.financial?.net_profit || 0)}
             </div>
             <p className="text-xs text-gray-500 mt-1">This month</p>
           </CardContent>
@@ -194,7 +250,7 @@ export default function BusinessAdminDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Overdue</span>
                 <span className="font-semibold text-red-600">
-                  {stats?.invoices?.overdue?.count || 0} ({stats?.financial?.currency || 'KES'} {parseFloat(stats?.invoices?.overdue?.amount || 0).toLocaleString()})
+                  {stats?.invoices?.overdue?.count || 0} ({formatKes(stats?.invoices?.overdue?.amount || 0)})
                 </span>
               </div>
             </div>
@@ -226,13 +282,13 @@ export default function BusinessAdminDashboard() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Budgeted</span>
                 <span className="font-semibold text-gray-900">
-                  {stats?.financial?.currency || 'KES'} {parseFloat(stats?.budgets?.total_budgeted || 0).toLocaleString()}
+                  {formatKes(stats?.budgets?.total_budgeted || 0)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Spent</span>
                 <span className="font-semibold text-gray-900">
-                  {stats?.financial?.currency || 'KES'} {parseFloat(stats?.budgets?.total_spent || 0).toLocaleString()}
+                  {formatKes(stats?.budgets?.total_spent || 0)}
                 </span>
               </div>
             </div>
@@ -247,26 +303,7 @@ export default function BusinessAdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-          <Link to="/invoices">
-            <FileText className="w-4 h-4 mr-2" />
-            Create Invoice
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-          <Link to="/transactions">
-            <DollarSign className="w-4 h-4 mr-2" />
-            Add Transaction
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-          <Link to="/clients">
-            <Users className="w-4 h-4 mr-2" />
-            Add Customer
-          </Link>
-        </Button>
-      </div>
+      <QuickActions />
 
       {/* Recent Transactions */}
       <Card className="border border-gray-200 shadow-sm">
@@ -292,7 +329,7 @@ export default function BusinessAdminDashboard() {
                     </div>
                     <div className="text-right">
                       <p className={`font-semibold ${tx.transaction_type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {tx.transaction_type === 'income' ? '+' : '-'}{tx.currency || 'KES'} {parseFloat(tx.amount || 0).toLocaleString()}
+                        {tx.transaction_type === 'income' ? '+' : '-'}{formatKes(tx.amount || 0)}
                       </p>
                       <p className="text-xs text-gray-500">
                         {new Date(tx.transaction_date).toLocaleDateString()}
@@ -313,6 +350,7 @@ export default function BusinessAdminDashboard() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

@@ -12,30 +12,47 @@ import InvoiceList from "../components/invoices/InvoiceList";
 import InvoiceStats from "../components/invoices/InvoiceStats";
 import { generateInvoicePDF } from "../components/invoices/InvoicePDFGenerator";
 import ImportInvoices from "../components/invoices/ImportInvoices";
+import MpesaPaymentModal from "../components/payments/MpesaPaymentModal";
 
 export default function Invoices() {
   const [showForm, setShowForm] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [showImport, setShowImport] = useState(false);
+  const [showMpesaModal, setShowMpesaModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
   const queryClient = useQueryClient();
   const { getBusinesses, activeBusinessId, user } = useAuth();
   const businesses = getBusinesses();
   const businessId = activeBusinessId || businesses[0]?.id;
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ['invoices', businessId],
+    queryKey: ['invoices', businessId, user?.id], // Include user ID in cache key
     queryFn: async () => {
       if (!businessId) {
         return [];
       }
-      const params = { business: businessId };
-      return await apiClient.getInvoices(params);
+      try {
+        const params = { business: businessId };
+        const result = await apiClient.getInvoices(params);
+        // Ensure we have an array
+        const invoiceArray = Array.isArray(result) ? result : (result?.results || result?.invoices || []);
+        // Filter by user ID on frontend as well (double-check)
+        const userInvoices = invoiceArray.filter(inv => {
+          const invUserId = inv.user || inv.user_id || inv.user?.id;
+          return invUserId && String(invUserId) === String(user?.id);
+        });
+        return userInvoices;
+      } catch (error) {
+        console.error('Error fetching invoices:', error);
+        return [];
+      }
     },
-    enabled: !!businessId,
+    enabled: !!businessId && !!user?.id,
     initialData: [],
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0 // Always consider data stale to force refetch
+    refetchOnMount: false, // Use cache, don't refetch on mount
+    refetchOnWindowFocus: false, // Use cache, don't refetch on focus
+    staleTime: 30 * 60 * 1000, // 30 minutes - cache for 30 minutes
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache
   });
   
   if (!businessId) {
@@ -92,15 +109,36 @@ export default function Invoices() {
       return invoice;
     },
     onSuccess: () => {
+      // Invalidate all invoice-related queries
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // CRITICAL: Invalidate KAVI's financial context cache
+      // This ensures KAVI picks up new data immediately
+      if (businessId) {
+        queryClient.invalidateQueries({ queryKey: ['invoices', businessId] });
+        queryClient.invalidateQueries({ queryKey: ['invoices', businessId, user?.id] });
+      }
+      
+      // Force refetch all data
+      queryClient.refetchQueries({ queryKey: ['invoices'] });
+      queryClient.refetchQueries({ queryKey: ['user-dashboard'] });
+      
       setShowForm(false);
       setEditingInvoice(null);
-      toast.success('Invoice created successfully');
+      toast.success('Invoice created successfully! KAVI data updated.');
     },
     onError: (error) => {
       console.error('Invoice creation error:', error);
-      toast.error(error.message || 'Failed to create invoice');
+      
+      // Check if it's a backend database/cache error
+      const errorMsg = error.message || '';
+      if (errorMsg.includes('cache_table') || errorMsg.includes('ProgrammingError')) {
+        toast.error('Backend database needs setup. Please contact admin to run: python manage.py createcachetable');
+      } else {
+        toast.error(errorMsg || 'Failed to create invoice');
+      }
     }
   });
 
@@ -112,10 +150,20 @@ export default function Invoices() {
       });
     },
     onSuccess: () => {
+      // Invalidate all invoice-related queries
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // CRITICAL: Invalidate KAVI's financial context cache
+      if (businessId) {
+        queryClient.invalidateQueries({ queryKey: ['invoices', businessId] });
+        queryClient.invalidateQueries({ queryKey: ['invoices', businessId, user?.id] });
+      }
+      
       setShowForm(false);
       setEditingInvoice(null);
-      toast.success('Invoice updated successfully');
+      toast.success('Invoice updated successfully! KAVI data updated.');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to update invoice');
@@ -129,8 +177,18 @@ export default function Invoices() {
       });
     },
     onSuccess: () => {
+      // Invalidate all invoice-related queries
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success('Invoice deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // CRITICAL: Invalidate KAVI's financial context cache
+      if (businessId) {
+        queryClient.invalidateQueries({ queryKey: ['invoices', businessId] });
+        queryClient.invalidateQueries({ queryKey: ['invoices', businessId, user?.id] });
+      }
+      
+      toast.success('Invoice deleted successfully! KAVI data updated.');
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to delete invoice');
@@ -221,6 +279,26 @@ export default function Invoices() {
         onDelete={deleteMutation.mutate}
         onUpdateStatus={({ id, status }) => updateMutation.mutate({ id, data: { status } })}
         onDownloadPDF={handleDownloadPDF}
+        onPayWithMpesa={(invoice) => {
+          setSelectedInvoice(invoice);
+          setShowMpesaModal(true);
+        }}
+      />
+
+      {/* M-Pesa Payment Modal */}
+      <MpesaPaymentModal
+        isOpen={showMpesaModal}
+        onClose={() => {
+          setShowMpesaModal(false);
+          setSelectedInvoice(null);
+        }}
+        invoice={selectedInvoice}
+        amount={selectedInvoice?.total_amount}
+        businessId={businessId}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['invoices'] });
+          queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
+        }}
       />
     </div>
   );

@@ -194,14 +194,14 @@ export default function SuperAdminDashboard() {
             <Plus className="w-4 h-4 mr-2" />
             Create Business
           </Button>
-          <Button
+        <Button 
             onClick={() => setShowAssignBusiness(true)}
-            variant="outline"
+          variant="outline"
             className="border-blue-600 text-blue-600 hover:bg-blue-50"
-          >
+        >
             <UserPlus className="w-4 h-4 mr-2" />
             Assign Business
-          </Button>
+        </Button>
           <Badge variant="outline" className="text-green-600 border-green-600 px-3 py-1">
             <Activity className="w-3 h-3 mr-1" />
             System Operational
@@ -256,7 +256,7 @@ export default function SuperAdminDashboard() {
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="secondary" className="text-xs">
                 <AlertCircle className="w-3 h-3 mr-1" />
-                Awaiting review
+              Awaiting review
               </Badge>
             </div>
           </CardContent>
@@ -281,7 +281,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div>
+                <div>
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quickActions.map((action) => {
@@ -301,7 +301,7 @@ export default function SuperAdminDashboard() {
                 className="hover:shadow-lg transition-all cursor-pointer group"
                 onClick={() => navigate(action.path)}
               >
-                <CardContent className="p-6">
+            <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className={`p-3 rounded-lg ${colorClasses[action.color]}`}>
                       <Icon className="w-6 h-6" />
@@ -320,11 +320,11 @@ export default function SuperAdminDashboard() {
                     Go to {action.title}
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-                </CardContent>
-              </Card>
+          </CardContent>
+        </Card>
             );
           })}
-        </div>
+            </div>
       </div>
 
       {/* System Overview */}
@@ -338,13 +338,13 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Super Admins</span>
+                <span className="text-sm text-gray-600">Super Admins</span>
               <span className="font-semibold text-gray-900">{stats?.super_admins || 0}</span>
-            </div>
+              </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Business Admins</span>
+                <span className="text-sm text-gray-600">Business Admins</span>
               <span className="font-semibold text-gray-900">{stats?.business_admins || 0}</span>
-            </div>
+              </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600">Staff Members</span>
               <span className="font-semibold text-gray-900">{stats?.staff_members || 0}</span>
@@ -361,15 +361,15 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Total Invoices</span>
+                <span className="text-sm text-gray-600">Total Invoices</span>
               <span className="font-semibold text-gray-900">{stats?.total_invoices || 0}</span>
-            </div>
+              </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Paid Invoices</span>
+                <span className="text-sm text-gray-600">Paid Invoices</span>
               <span className="font-semibold text-green-600">{stats?.paid_invoices || 0}</span>
-            </div>
+              </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Transactions</span>
+                <span className="text-sm text-gray-600">Transactions</span>
               <span className="font-semibold text-gray-900">{stats?.total_transactions || 0}</span>
             </div>
           </CardContent>
@@ -384,11 +384,11 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Active Users</span>
+                <span className="text-sm text-gray-600">Active Users</span>
               <span className="font-semibold text-green-600">{stats?.active_users || 0}</span>
-            </div>
+              </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-              <span className="text-sm text-gray-600">Active Businesses</span>
+                <span className="text-sm text-gray-600">Active Businesses</span>
               <span className="font-semibold text-green-600">{stats?.active_businesses || 0}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -400,7 +400,7 @@ export default function SuperAdminDashboard() {
             </div>
           </CardContent>
         </Card>
-      </div>
+              </div>
 
       {/* Create Business Modal */}
       {showCreateBusiness && (
@@ -592,11 +592,11 @@ export default function SuperAdminDashboard() {
                   >
                     {assignBusinessMutation.isPending ? 'Assigning...' : 'Assign Business'}
                   </Button>
-                </div>
+            </div>
               </form>
-            </CardContent>
-          </Card>
-        </div>
+          </CardContent>
+        </Card>
+      </div>
       )}
     </div>
   );

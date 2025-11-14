@@ -49,12 +49,6 @@ python manage.py migrate
 ```bash
 python manage.py createsuperuser
 ```
-
-6. Run development server:
-```bash
-python manage.py runserver
-```
-
 ## API Endpoints
 
 - `/api/users/` - User management

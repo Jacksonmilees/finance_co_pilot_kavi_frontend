@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import apiClient from '../lib/apiClient';
@@ -10,6 +10,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Skeleton, CardSkeleton } from '../components/ui/skeleton';
+import OnboardingWizard from '../components/onboarding/OnboardingWizard';
+import EmptyState from '../components/ui/EmptyState';
+import QuickActions from '../components/QuickActions';
+import GettingStartedBanner from '../components/GettingStartedBanner';
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
@@ -21,6 +25,21 @@ export default function UserDashboard() {
   const { user, getBusinesses, activeBusinessId } = useAuth();
   const businesses = getBusinesses();
   const businessId = activeBusinessId || businesses[0]?.id;
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if onboarding should be shown
+  useEffect(() => {
+    if (user) {
+      const completed = localStorage.getItem('onboarding_completed');
+      const userCreated = new Date(user.date_joined || user.created_at);
+      const daysSinceJoin = (Date.now() - userCreated.getTime()) / (1000 * 60 * 60 * 24);
+      
+      // Show onboarding if not completed and user joined in last 7 days
+      if (!completed && daysSinceJoin < 7) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [user]);
 
   const { data: userData, isLoading: isLoadingUser } = useQuery({
     queryKey: ['currentUser'],
@@ -89,6 +108,14 @@ export default function UserDashboard() {
 
   return (
     <div className="space-y-6 p-4 md:p-8 bg-white min-h-screen">
+      {/* Onboarding Wizard */}
+      {showOnboarding && (
+        <OnboardingWizard
+          onComplete={() => setShowOnboarding(false)}
+          onSkip={() => setShowOnboarding(false)}
+        />
+      )}
+
       {dashboardError && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <p className="text-yellow-800 text-sm">
@@ -96,6 +123,9 @@ export default function UserDashboard() {
           </p>
         </div>
       )}
+
+      {/* Getting Started Banner */}
+      {!showOnboarding && <GettingStartedBanner />}
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -169,37 +199,20 @@ export default function UserDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-          <Link to="/invoices">
-            <FileText className="w-4 h-4 mr-2" />
-            Create Invoice
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-          <Link to="/transactions">
-            <DollarSign className="w-4 h-4 mr-2" />
-            Add Transaction
-          </Link>
-        </Button>
-        <Button asChild variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
-          <Link to="/clients">
-            <Users className="w-4 h-4 mr-2" />
-            Add Customer
-          </Link>
-        </Button>
-      </div>
+      <QuickActions />
 
       {/* Recent Transactions */}
       <Card className="border border-gray-200 shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-gray-900">Recent Transactions</CardTitle>
-            <Button variant="outline" size="sm" asChild className="border-blue-600 text-blue-600 hover:bg-blue-50">
-              <Link to="/transactions">
-                View All <ArrowRight className="w-4 h-4 ml-1" />
-              </Link>
-            </Button>
+            {recentTransactions.length > 0 && (
+              <Button variant="outline" size="sm" asChild className="border-blue-600 text-blue-600 hover:bg-blue-50">
+                <Link to="/transactions">
+                  View All <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -223,19 +236,13 @@ export default function UserDashboard() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-              <p>No transactions yet</p>
-              <Button asChild variant="outline" className="mt-4 border-blue-600 text-blue-600 hover:bg-blue-50">
-                <Link to="/transactions">Add Your First Transaction</Link>
-              </Button>
-            </div>
+            <EmptyState type="transactions" />
           )}
         </CardContent>
       </Card>
 
       {/* Recent Customers */}
-      {customersData.length > 0 && (
+      {customersData.length > 0 ? (
         <Card className="border border-gray-200 shadow-sm">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -276,6 +283,8 @@ export default function UserDashboard() {
             </div>
           </CardContent>
         </Card>
+      ) : (
+        <EmptyState type="customers" />
       )}
     </div>
   );

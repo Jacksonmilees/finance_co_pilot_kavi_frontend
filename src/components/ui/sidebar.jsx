@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/utils"
 
 const SidebarContext = React.createContext(null)
@@ -44,16 +44,22 @@ const SidebarProvider = React.forwardRef(({
 })
 SidebarProvider.displayName = "SidebarProvider"
 
-const Sidebar = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "flex h-full w-64 flex-col border-r bg-background",
-      className
-    )}
-    {...props}
-  />
-))
+const Sidebar = React.forwardRef(({ className, ...props }, ref) => {
+  const { open } = useSidebar()
+  const collapsed = !open
+  return (
+    <div
+      ref={ref}
+      data-collapsible={collapsed ? "icon" : "expanded"}
+      className={cn(
+        "group flex h-screen flex-col border-r bg-background transition-all duration-300 ease-in-out flex-shrink-0 sticky top-0",
+        collapsed ? "w-16 md:w-20" : "w-64",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 Sidebar.displayName = "Sidebar"
 
 const SidebarHeader = React.forwardRef(({ className, ...props }, ref) => (
@@ -68,7 +74,7 @@ SidebarHeader.displayName = "SidebarHeader"
 const SidebarContent = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex flex-1 flex-col gap-2 overflow-auto", className)}
+    className={cn("flex flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden", className)}
     {...props}
   />
 ))
@@ -92,16 +98,23 @@ const SidebarGroup = React.forwardRef(({ className, ...props }, ref) => (
 ))
 SidebarGroup.displayName = "SidebarGroup"
 
-const SidebarGroupLabel = React.forwardRef(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground",
-      className
-    )}
-    {...props}
-  />
-))
+const SidebarGroupLabel = React.forwardRef(({ className, ...props }, ref) => {
+  const { open } = useSidebar()
+  // When collapsed, hide labels to avoid truncated text; keep small spacer
+  if (!open) {
+    return <div ref={ref} className="h-2" {...props} />
+  }
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+})
 SidebarGroupLabel.displayName = "SidebarGroupLabel"
 
 const SidebarGroupContent = React.forwardRef(({ className, ...props }, ref) => (
@@ -308,12 +321,12 @@ const SidebarTrigger = React.forwardRef(({ className, ...props }, ref) => {
       data-sidebar="trigger"
       onClick={() => setOpen(!open)}
       className={cn(
-        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 w-8 h-8",
         className
       )}
       {...props}
     >
-      <PanelLeft />
+      {open ? <ChevronLeft className="w-5 h-5 flex-shrink-0" /> : <ChevronRight className="w-5 h-5 flex-shrink-0" />}
       <span className="sr-only">Toggle Sidebar</span>
     </button>
   )

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import ClientOnboarding from "../components/dashboard/ClientOnboarding";
 import { apiClient } from "@/lib/apiClient";
+import EmptyState from "../components/ui/EmptyState";
 
 export default function Clients() {
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -40,7 +41,11 @@ export default function Clients() {
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: () => base44.entities.Customer.list('-created_at', {}),
-    initialData: []
+    initialData: [],
+    refetchOnMount: false, // Use cache, don't refetch on mount
+    refetchOnWindowFocus: false, // Use cache, don't refetch on focus
+    staleTime: 30 * 60 * 1000, // 30 minutes - cache for 30 minutes
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache
   });
 
   const deleteMutation = useMutation({
@@ -308,24 +313,21 @@ export default function Clients() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-lg font-medium">No clients found</p>
-              <p className="text-sm mt-2">
-                {searchTerm || statusFilter !== "all" || typeFilter !== "all"
-                  ? "Try adjusting your filters"
-                  : "Get started by adding your first client"}
-              </p>
-              {!searchTerm && statusFilter === "all" && typeFilter === "all" && (
-                <Button
-                  onClick={() => setShowOnboarding(true)}
-                  className="mt-4 bg-gradient-to-r from-blue-600 to-cyan-600"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Client
-                </Button>
-              )}
-            </div>
+            <EmptyState 
+              type="customers"
+              title={searchTerm || statusFilter !== "all" || typeFilter !== "all" 
+                ? "No Clients Match Your Filters" 
+                : "No Customers Yet"}
+              description={searchTerm || statusFilter !== "all" || typeFilter !== "all"
+                ? "Try adjusting your search or filters to find clients."
+                : "Add your customers to track relationships and manage invoices."}
+              primaryAction={!searchTerm && statusFilter === "all" && typeFilter === "all" ? {
+                label: "Add Customer",
+                icon: Plus,
+                path: "#",
+                onClick: () => setShowOnboarding(true)
+              } : undefined}
+            />
           )}
         </CardContent>
       </Card>

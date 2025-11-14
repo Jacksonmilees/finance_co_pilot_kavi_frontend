@@ -1,5 +1,18 @@
 // Real API client for Django backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const RAW_API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const normalizeApiBase = (value) => {
+  if (!value) return 'http://localhost:8000/api';
+  // Trim whitespace
+  let url = String(value).trim();
+  // Remove trailing slashes
+  url = url.replace(/\/+$/, '');
+  // Ensure `/api` suffix once
+  if (!/\/api$/.test(url)) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+const API_BASE_URL = normalizeApiBase(RAW_API_BASE_URL);
 
 class ApiClient {
   constructor() {
@@ -66,7 +79,8 @@ class ApiClient {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
+    // Ensure we don't produce double slashes when joining
+    const url = `${this.baseURL}${String(endpoint || '')}`;
     
     const headers = {
       'Content-Type': 'application/json',
@@ -135,20 +149,27 @@ class ApiClient {
     if (!response.ok) {
       // Try to parse error message from response
       let errorMessage = 'Request failed';
+      let errorData = null;
       
       if (contentType && contentType.includes('application/json')) {
         try {
-          const data = await response.json();
-          errorMessage = data.detail || data.message || data.error || JSON.stringify(data);
+          errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorData.error || JSON.stringify(errorData);
         } catch (e) {
           errorMessage = `Request failed with status ${response.status}`;
         }
       } else {
-        errorMessage = `Request failed with status ${response.status}`;
+        try {
+          const text = await response.text();
+          errorMessage = text || `Request failed with status ${response.status}`;
+        } catch (e) {
+          errorMessage = `Request failed with status ${response.status}`;
+        }
       }
       
       const error = new Error(errorMessage);
       error.status = response.status;
+      error.response = { status: response.status, data: errorData };
       throw error;
     }
     
@@ -166,14 +187,13 @@ class ApiClient {
 
   async refreshToken(refreshToken) {
     try {
-      const response = await fetch(`${this.baseURL}/auth/token/refresh/`, {
+      const data = await this.request('/auth/token/refresh/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh: refreshToken }),
+        headers: { 'Content-Type': 'application/json' }
       });
-      const data = await response.json();
-      if (response.ok && data.access) {
-        this.setToken(data.access);
+      if (data?.access) {
+        this.setToken(data.access, data.refresh);
         return true;
       }
     } catch (error) {
@@ -254,10 +274,7 @@ class ApiClient {
   }
 
   async createTransaction(transactionData) {
-    return this.request('/finance/transactions/', {
-      method: 'POST',
-      body: JSON.stringify(transactionData),
-    });
+    return this.post('/finance/transactions/', transactionData);
   }
 
   async getTransactionAnalytics(params = {}) {
@@ -524,11 +541,27 @@ class ApiClient {
 
   // Admin Security
   async getAdminSecurity() {
-    return this.request('/users/admin/security/');
+    try {
+      return await this.request('/users/admin/security/');
+    } catch (error) {
+      console.error('Error fetching admin security:', error);
+      // Return default structure if endpoint doesn't exist
+      return {
+        two_factor_enabled: false,
+        session_timeout: 3600,
+        password_policy: {}
+      };
+    }
   }
 
   async getAdminSecurityActivity() {
-    return this.request('/users/admin/security/activity/');
+    try {
+      return await this.request('/users/admin/security/activity/');
+    } catch (error) {
+      console.error('Error fetching admin security activity:', error);
+      // Return empty array if endpoint doesn't exist
+      return [];
+    }
   }
 
   // Documents

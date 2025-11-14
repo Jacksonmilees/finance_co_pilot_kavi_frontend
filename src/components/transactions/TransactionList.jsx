@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/ui/EmptyState";
 
 export default function TransactionList({ transactions, isLoading, onEdit, onDelete }) {
   if (isLoading) {
@@ -17,6 +18,19 @@ export default function TransactionList({ transactions, isLoading, onEdit, onDel
           ))}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (transactions.length === 0) {
+    return (
+      <EmptyState 
+        type="transactions"
+        primaryAction={{
+          label: "Add Transaction",
+          icon: ArrowUpRight,
+          path: "#"
+        }}
+      />
     );
   }
 

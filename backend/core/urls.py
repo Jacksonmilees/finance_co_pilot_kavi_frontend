@@ -18,4 +18,15 @@ urlpatterns = [
     path('admin/businesses/', views.list_businesses, name='list-businesses'),
     path('admin/businesses/<int:business_id>/modules/', views.business_modules, name='business-modules'),
     path('admin/businesses/<int:business_id>/modules/<str:module_id>/', views.toggle_module, name='toggle-module'),
+    
+    # User Module Access
+    path('user/modules/', views.user_modules, name='user-modules'),
+    
+    # Notifications
+    path('notifications/', views.notifications, name='notifications'),
+    path('notifications/unread-count/', views.unread_notifications_count, name='unread-notifications-count'),
+    path('notifications/<uuid:notification_id>/read/', views.mark_notification_read, name='mark-notification-read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark-all-notifications-read'),
+    path('notifications/create/', views.create_notification, name='create-notification'),
+    path('notifications/<uuid:notification_id>/delete/', views.delete_notification, name='delete-notification'),
 ]

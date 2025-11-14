@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { 
   Building2, User, CheckCircle, XCircle, Clock, Eye, 
-  Mail, Phone, MapPin, DollarSign, FileText, Loader2, AlertCircle
+  Mail, Phone, MapPin, DollarSign, FileText, Loader2, AlertCircle, Copy, AlertTriangle, X
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,6 +24,8 @@ export default function SuperAdminApprovals() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [assignedBusinessId, setAssignedBusinessId] = useState('');
   const [assignedRole, setAssignedRole] = useState('staff');
+  const [approvedCredentials, setApprovedCredentials] = useState(null); // NEW: Store credentials after approval
+  const [copiedField, setCopiedField] = useState(null); // NEW: Track copied fields
   const queryClient = useQueryClient();
 
   // Fetch pending business registrations
@@ -53,6 +55,15 @@ export default function SuperAdminApprovals() {
     enabled: isSuperAdmin()
   });
 
+  // Copy to clipboard helper
+  const copyToClipboard = (text, field) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(field);
+      toast.success(`Copied ${field}!`);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  };
+
   // Business approval mutation
   const approveBusinessMutation = useMutation({
     mutationFn: (registrationId) => 
@@ -60,7 +71,15 @@ export default function SuperAdminApprovals() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pending-business-registrations'] });
       setViewingBusinessReg(null);
-      toast.success(`Business approved! Username: ${data.username}, Temp Password: ${data.temp_password}`);
+      
+      // Show credentials modal instead of toast
+      setApprovedCredentials({
+        type: 'business',
+        businessName: data.business_name || 'New Business',
+        username: data.username,
+        password: data.temp_password,
+        email: data.email
+      });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to approve registration');
@@ -88,16 +107,24 @@ export default function SuperAdminApprovals() {
   // Individual approval mutation
   const approveIndividualMutation = useMutation({
     mutationFn: ({ registrationId, assignedBusinessId, assignedRole }) => 
-      apiClient.request(`/users/admin/approve-individual-registration/${registrationId}/`, { 
-        method: 'POST',
-        data: { assigned_business_id: assignedBusinessId, assigned_role: assignedRole }
+      apiClient.post(`/users/admin/approve-individual-registration/${registrationId}/`, { 
+        assigned_business_id: assignedBusinessId, 
+        assigned_role: assignedRole 
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pending-individual-registrations'] });
       setViewingIndividualReg(null);
       setAssignedBusinessId('');
       setAssignedRole('staff');
-      toast.success(`Individual approved! Username: ${data.username}, Temp Password: ${data.temp_password}`);
+      
+      // Show credentials modal instead of toast
+      setApprovedCredentials({
+        type: 'individual',
+        fullName: data.full_name || 'New User',
+        username: data.username,
+        password: data.temp_password,
+        email: data.email
+      });
     },
     onError: (error) => {
       toast.error(error.message || 'Failed to approve registration');
@@ -468,6 +495,193 @@ export default function SuperAdminApprovals() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Credentials Modal - Shows after approval */}
+      {approvedCredentials && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl border-4 border-green-500 shadow-2xl">
+            <CardHeader className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="w-8 h-8" />
+                  <div>
+                    <CardTitle className="text-2xl">
+                      {approvedCredentials.type === 'business' ? '🎉 Business Approved!' : '✅ User Approved!'}
+                    </CardTitle>
+                    <p className="text-green-100 text-sm mt-1">
+                      {approvedCredentials.type === 'business' 
+                        ? approvedCredentials.businessName 
+                        : approvedCredentials.fullName}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setApprovedCredentials(null)}
+                  className="text-white hover:bg-white/20"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            
+            <CardContent className="p-6 space-y-6">
+              {/* Critical Warning */}
+              <Alert className="border-2 border-amber-500 bg-amber-50">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <AlertDescription className="text-amber-900">
+                  <p className="font-bold text-lg mb-2">⚠️ IMPORTANT - Read Carefully!</p>
+                  <ul className="space-y-1 text-sm">
+                    <li>✋ <strong>Copy these credentials NOW!</strong></li>
+                    <li>🔒 <strong>You will NOT see them again</strong> after closing this window</li>
+                    <li>🔄 The user must change their password on first login</li>
+                    <li>📧 Send these credentials to: <code className="bg-amber-100 px-1 rounded">{approvedCredentials.email}</code></li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+
+              {/* Login Credentials */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <User className="w-5 h-5 text-blue-600" />
+                  Login Credentials
+                </h3>
+
+                {/* Email */}
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                  <label className="text-xs font-bold text-blue-900 uppercase mb-2 block">
+                    📧 Email Address
+                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <code className="text-lg font-mono font-bold text-blue-900 bg-white px-3 py-2 rounded flex-1">
+                      {approvedCredentials.email}
+                    </code>
+                    <Button
+                      size="sm"
+                      onClick={() => copyToClipboard(approvedCredentials.email, 'Email')}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {copiedField === 'Email' ? (
+                        <><CheckCircle className="w-4 h-4 mr-1" /> Copied!</>
+                      ) : (
+                        <><Copy className="w-4 h-4 mr-1" /> Copy</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Username */}
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+                  <label className="text-xs font-bold text-purple-900 uppercase mb-2 block">
+                    👤 Username
+                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <code className="text-lg font-mono font-bold text-purple-900 bg-white px-3 py-2 rounded flex-1">
+                      {approvedCredentials.username}
+                    </code>
+                    <Button
+                      size="sm"
+                      onClick={() => copyToClipboard(approvedCredentials.username, 'Username')}
+                      className="bg-purple-600 hover:bg-purple-700"
+                    >
+                      {copiedField === 'Username' ? (
+                        <><CheckCircle className="w-4 h-4 mr-1" /> Copied!</>
+                      ) : (
+                        <><Copy className="w-4 h-4 mr-1" /> Copy</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Temporary Password */}
+                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+                  <label className="text-xs font-bold text-red-900 uppercase mb-2 block">
+                    🔑 Temporary Password (Must Change on First Login)
+                  </label>
+                  <div className="flex items-center justify-between gap-3">
+                    <code className="text-lg font-mono font-bold text-red-900 bg-white px-3 py-2 rounded flex-1">
+                      {approvedCredentials.password}
+                    </code>
+                    <Button
+                      size="sm"
+                      onClick={() => copyToClipboard(approvedCredentials.password, 'Password')}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {copiedField === 'Password' ? (
+                        <><CheckCircle className="w-4 h-4 mr-1" /> Copied!</>
+                      ) : (
+                        <><Copy className="w-4 h-4 mr-1" /> Copy</>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Copy All Button */}
+                <Button
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-6 text-lg"
+                  onClick={() => {
+                    const allCreds = `
+Login Credentials for ${approvedCredentials.type === 'business' ? approvedCredentials.businessName : approvedCredentials.fullName}
+
+Email: ${approvedCredentials.email}
+Username: ${approvedCredentials.username}
+Temporary Password: ${approvedCredentials.password}
+
+⚠️ IMPORTANT: You must change your password on first login!
+
+Login URL: ${window.location.origin}/login
+                    `.trim();
+                    copyToClipboard(allCreds, 'All Credentials');
+                  }}
+                >
+                  <Copy className="w-5 h-5 mr-2" />
+                  Copy All Credentials
+                </Button>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">📋 Next Steps:</h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                  <li>Copy the credentials above (click "Copy All Credentials")</li>
+                  <li>Send them to the user via email: <strong>{approvedCredentials.email}</strong></li>
+                  <li>Inform them to login at: <code className="bg-gray-200 px-1 rounded">{window.location.origin}/login</code></li>
+                  <li>User must change password on first login for security</li>
+                  <li><strong className="text-red-600">Close this window only after copying!</strong></li>
+                </ol>
+              </div>
+
+              {/* Close Button */}
+              <div className="flex gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    if (confirm('⚠️ Have you copied the credentials? You won\'t be able to see them again!')) {
+                      setApprovedCredentials(null);
+                    }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    if (confirm('✅ Confirm: I have copied and saved the credentials')) {
+                      setApprovedCredentials(null);
+                      toast.success('Great! Credentials saved. User can now login.');
+                    }
+                  }}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  I've Copied the Credentials
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

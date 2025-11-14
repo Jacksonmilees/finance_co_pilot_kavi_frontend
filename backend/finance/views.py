@@ -7,18 +7,18 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from .models import (
     Transaction, Invoice, InvoiceItem, Budget, CashFlow, 
-    FinancialForecast, CreditScore, Supplier
+    FinancialForecast, CreditScore, Supplier, MpesaPayment
 )
 from .serializers import (
     TransactionSerializer, InvoiceSerializer, InvoiceItemSerializer,
     BudgetSerializer, CashFlowSerializer, FinancialForecastSerializer,
     CreditScoreSerializer, FinancialSummarySerializer, TransactionAnalyticsSerializer,
-    BudgetAnalyticsSerializer, SupplierSerializer
+    BudgetAnalyticsSerializer, SupplierSerializer, MpesaPaymentSerializer
 )
 from users.models import Business, Membership
 
@@ -89,50 +89,83 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
     
     def perform_create(self, serializer):
-        # Validate business exists and user has access
-        business_id = self.request.data.get('business')
-        if not business_id:
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({'business': 'Business ID is required'})
+        from rest_framework.exceptions import ValidationError, PermissionDenied
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # Convert to int for comparison
         try:
-            business_id_int = int(business_id)
-        except (ValueError, TypeError):
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({'business': 'Invalid business ID format'})
-        
-        business_ids = list(get_business_queryset(self.request.user, business_id_int))
-        if not business_ids or business_id_int not in business_ids:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied('You do not have access to this business')
-        
-        # Get Business object
-        from users.models import Business
-        try:
-            business = Business.objects.get(id=business_id_int)
-        except Business.DoesNotExist:
-            from rest_framework.exceptions import ValidationError
-            raise ValidationError({'business': 'Business not found'})
-        
-        # Handle transaction_date - convert date string to datetime if needed
-        transaction_date = self.request.data.get('transaction_date')
-        if transaction_date:
-            from django.utils.dateparse import parse_datetime, parse_date
+            # Validate business exists and user has access
+            business_id = self.request.data.get('business')
+            if not business_id:
+                raise ValidationError({'business': 'Business ID is required'})
+            
+            # Convert to int for comparison
+            try:
+                business_id_int = int(business_id)
+            except (ValueError, TypeError):
+                raise ValidationError({'business': 'Invalid business ID format'})
+            
+            business_ids = list(get_business_queryset(self.request.user, business_id_int))
+            if not business_ids or business_id_int not in business_ids:
+                raise PermissionDenied('You do not have access to this business')
+            
+            # Get Business object
+            from users.models import Business
+            try:
+                business = Business.objects.get(id=business_id_int)
+            except Business.DoesNotExist:
+                raise ValidationError({'business': 'Business not found'})
+            
+            # Handle transaction_date - convert date string to datetime if needed
+            transaction_date = self.request.data.get('transaction_date')
             from django.utils import timezone
             from datetime import datetime, time as dt_time
-            # Try parsing as datetime first
-            if isinstance(transaction_date, str):
-                dt = parse_datetime(transaction_date)
-                if not dt:
-                    # Try parsing as date and convert to datetime
-                    d = parse_date(transaction_date)
-                    if d:
-                        dt = timezone.make_aware(datetime.combine(d, dt_time.min))
-                if dt:
-                    serializer.validated_data['transaction_date'] = dt
-        
-        serializer.save(user=self.request.user, business=business)
+            
+            if transaction_date:
+                from django.utils.dateparse import parse_datetime, parse_date
+                dt = None
+                
+                # Try parsing as datetime first
+                if isinstance(transaction_date, str):
+                    # Try ISO format with timezone
+                    dt = parse_datetime(transaction_date)
+                    if not dt:
+                        # Try ISO format without timezone (add timezone)
+                        try:
+                            # If format is YYYY-MM-DDTHH:mm:ss, add timezone
+                            if 'T' in transaction_date and len(transaction_date) == 19:
+                                dt = datetime.fromisoformat(transaction_date)
+                                dt = timezone.make_aware(dt)
+                            else:
+                                # Try parsing as date and convert to datetime
+                                d = parse_date(transaction_date)
+                                if d:
+                                    dt = timezone.make_aware(datetime.combine(d, dt_time.min))
+                        except (ValueError, TypeError) as e:
+                            logger.warning(f"Date parsing error: {e}, transaction_date: {transaction_date}")
+                    
+                    if dt:
+                        serializer.validated_data['transaction_date'] = dt
+                    else:
+                        # If parsing fails, use current time as fallback
+                        logger.warning(f"Could not parse transaction_date: {transaction_date}, using current time")
+                        serializer.validated_data['transaction_date'] = timezone.now()
+                else:
+                    serializer.validated_data['transaction_date'] = timezone.now()
+            else:
+                # If no transaction_date provided, use current time
+                serializer.validated_data['transaction_date'] = timezone.now()
+            
+            # Log before save for debugging
+            logger.info(f"Creating transaction: user={self.request.user.id}, business={business.id}, amount={serializer.validated_data.get('amount')}")
+            serializer.save(user=self.request.user, business=business)
+        except (ValidationError, PermissionDenied):
+            # Re-raise validation/permission errors as-is
+            raise
+        except Exception as e:
+            logger.error(f"Error creating transaction: {str(e)}", exc_info=True)
+            # For other errors, wrap in ValidationError with detailed message
+            raise ValidationError({'error': f'Failed to create transaction: {str(e)}'})
     
     @action(detail=False, methods=['get'])
     def analytics(self, request):
@@ -254,6 +287,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             cache_key_pattern = f"dashboard:user_{user_id}:business_{business_id}:period_*"
             # For database cache, we need to delete specific keys
             # Delete common periods
+            from django.core.cache import cache
             for period in ['30', '7', '90', '365']:
                 cache_key = f"dashboard:user_{user_id}:business_{business_id}:period_{period}"
                 cache.delete(cache_key)
@@ -841,3 +875,244 @@ class VoiceConversationViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         # Return empty list - conversations are client-side
         return Response([])
+
+
+# ==================== M-PESA ENDPOINTS ====================
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def initiate_mpesa_payment(request):
+    """Initiate M-Pesa STK Push payment"""
+    try:
+        from .services.mpesa_service import get_mpesa_service
+        from django.utils import timezone
+        
+        user = request.user
+        phone_number = request.data.get('phone_number')
+        amount = request.data.get('amount')
+        business_id = request.data.get('business')
+        invoice_id = request.data.get('invoice')
+        account_reference = request.data.get('account_reference', '')
+        transaction_desc = request.data.get('transaction_desc', 'Payment')
+        
+        # Validate required fields
+        if not phone_number or not amount or not business_id:
+            return Response(
+                {'error': 'phone_number, amount, and business are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate business access
+        business_ids = list(get_business_queryset(user, business_id))
+        if not business_ids or business_id not in business_ids:
+            return Response(
+                {'error': 'You do not have access to this business'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        business = Business.objects.get(id=business_id)
+        
+        # Create M-Pesa payment record
+        mpesa_payment = MpesaPayment.objects.create(
+            user=user,
+            business=business,
+            phone_number=phone_number,
+            amount=Decimal(str(amount)),
+            status='pending',
+            account_reference=account_reference or f"INV-{invoice_id}" if invoice_id else f"PAY-{user.id}",
+            transaction_desc=transaction_desc,
+            invoice_id=invoice_id if invoice_id else None
+        )
+        
+        # Initiate STK Push
+        mpesa_service = get_mpesa_service()
+        response = mpesa_service.stk_push(
+            phone_number=phone_number,
+            amount=amount,
+            account_reference=mpesa_payment.account_reference,
+            transaction_desc=transaction_desc
+        )
+        
+        # Update payment with response
+        if response.get('ResponseCode') == '0':
+            mpesa_payment.checkout_request_id = response.get('CheckoutRequestID')
+            mpesa_payment.merchant_request_id = response.get('MerchantRequestID')
+            mpesa_payment.status = 'initiated'
+            mpesa_payment.callback_data = response
+            mpesa_payment.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Payment request sent. Please check your phone.',
+                'payment_id': str(mpesa_payment.id),
+                'checkout_request_id': mpesa_payment.checkout_request_id
+            }, status=status.HTTP_200_OK)
+        else:
+            mpesa_payment.status = 'failed'
+            mpesa_payment.error_message = response.get('CustomerMessage', 'Payment initiation failed')
+            mpesa_payment.callback_data = response
+            mpesa_payment.save()
+            
+            return Response({
+                'success': False,
+                'error': response.get('CustomerMessage', 'Payment initiation failed'),
+                'payment_id': str(mpesa_payment.id)
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error initiating M-Pesa payment: {str(e)}")
+        return Response(
+            {'error': f'Payment initiation failed: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])  # Allow callback from M-Pesa
+def mpesa_callback(request):
+    """Handle M-Pesa STK Push callback"""
+    try:
+        from django.utils import timezone
+        import json
+        
+        data = request.data
+        body = data.get('Body', {})
+        stk_callback = body.get('stkCallback', {})
+        
+        checkout_request_id = stk_callback.get('CheckoutRequestID')
+        result_code = stk_callback.get('ResultCode')
+        result_desc = stk_callback.get('ResultDesc')
+        
+        # Find payment by checkout request ID
+        try:
+            mpesa_payment = MpesaPayment.objects.get(checkout_request_id=checkout_request_id)
+        except MpesaPayment.DoesNotExist:
+            return Response({'error': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Update payment status
+        mpesa_payment.callback_data = data
+        
+        if result_code == 0:
+            # Payment successful
+            callback_metadata = stk_callback.get('CallbackMetadata', {})
+            items = callback_metadata.get('Item', [])
+            
+            receipt_number = None
+            transaction_date = None
+            phone_number = None
+            amount = None
+            
+            for item in items:
+                if item.get('Name') == 'MpesaReceiptNumber':
+                    receipt_number = item.get('Value')
+                elif item.get('Name') == 'TransactionDate':
+                    transaction_date = str(item.get('Value'))
+                elif item.get('Name') == 'PhoneNumber':
+                    phone_number = item.get('Value')
+                elif item.get('Name') == 'Amount':
+                    amount = item.get('Value')
+            
+            mpesa_payment.status = 'completed'
+            mpesa_payment.mpesa_receipt_number = receipt_number
+            mpesa_payment.transaction_date = transaction_date
+            mpesa_payment.completed_at = timezone.now()
+            mpesa_payment.save()
+            
+            # Create transaction record if invoice exists
+            if mpesa_payment.invoice:
+                Transaction.objects.create(
+                    business=mpesa_payment.business,
+                    user=mpesa_payment.user,
+                    amount=mpesa_payment.amount,
+                    currency=mpesa_payment.currency,
+                    transaction_type='income',
+                    payment_method='mpesa',
+                    status='completed',
+                    description=f"M-Pesa payment for invoice {mpesa_payment.invoice.invoice_number}",
+                    reference_number=receipt_number,
+                    external_id=receipt_number,
+                    invoice=mpesa_payment.invoice,
+                    transaction_date=timezone.now()
+                )
+                
+                # Update invoice status
+                mpesa_payment.invoice.status = 'paid'
+                mpesa_payment.invoice.paid_at = timezone.now()
+                mpesa_payment.invoice.save()
+            
+            # Create notification
+            from core.models import Notification
+            Notification.objects.create(
+                user=mpesa_payment.user,
+                business=mpesa_payment.business,
+                title='Payment Received',
+                message=f'M-Pesa payment of {mpesa_payment.amount} KES received. Receipt: {receipt_number}',
+                notification_type='mpesa_payment',
+                priority='high',
+                action_url=f"/invoices/{mpesa_payment.invoice.id}" if mpesa_payment.invoice else "/transactions",
+                resource_type='payment',
+                resource_id=str(mpesa_payment.id)
+            )
+        else:
+            # Payment failed
+            mpesa_payment.status = 'failed'
+            mpesa_payment.error_message = result_desc
+            mpesa_payment.save()
+        
+        return Response({'ResultCode': 0, 'ResultDesc': 'Accepted'}, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error processing M-Pesa callback: {str(e)}")
+        return Response({'ResultCode': 1, 'ResultDesc': 'Error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mpesa_payment_status(request, payment_id):
+    """Get M-Pesa payment status"""
+    try:
+        user = request.user
+        mpesa_payment = MpesaPayment.objects.get(id=payment_id)
+        
+        # Check access
+        business_ids = list(get_business_queryset(user, mpesa_payment.business_id))
+        if mpesa_payment.business_id not in business_ids:
+            return Response(
+                {'error': 'You do not have access to this payment'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        serializer = MpesaPaymentSerializer(mpesa_payment)
+        return Response(serializer.data)
+        
+    except MpesaPayment.DoesNotExist:
+        return Response(
+            {'error': 'Payment not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mpesa_payments(request):
+    """Get all M-Pesa payments for user's businesses"""
+    user = request.user
+    business_id = request.query_params.get('business')
+    
+    business_ids = list(get_business_queryset(user, business_id))
+    if not business_ids:
+        return Response([])
+    
+    payments = MpesaPayment.objects.filter(business_id__in=business_ids).order_by('-created_at')
+    
+    # Filters
+    status_filter = request.query_params.get('status')
+    if status_filter:
+        payments = payments.filter(status=status_filter)
+    
+    serializer = MpesaPaymentSerializer(payments, many=True)
+    return Response(serializer.data)

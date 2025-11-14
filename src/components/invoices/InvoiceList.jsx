@@ -8,9 +8,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Pencil, Trash2, MoreVertical, Send, CheckCircle, XCircle, Download } from "lucide-react";
+import { Pencil, Trash2, MoreVertical, Send, CheckCircle, XCircle, Download, Smartphone } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/ui/EmptyState";
 
 const statusColors = {
   draft: "bg-gray-100 text-gray-800",
@@ -20,7 +21,7 @@ const statusColors = {
   cancelled: "bg-gray-100 text-gray-800"
 };
 
-export default function InvoiceList({ invoices, isLoading, onEdit, onDelete, onUpdateStatus, onDownloadPDF }) {
+export default function InvoiceList({ invoices, isLoading, onEdit, onDelete, onUpdateStatus, onDownloadPDF, onPayWithMpesa }) {
   if (isLoading) {
     return (
       <Card className="border-none shadow-lg">
@@ -30,6 +31,19 @@ export default function InvoiceList({ invoices, isLoading, onEdit, onDelete, onU
           ))}
         </CardContent>
       </Card>
+    );
+  }
+
+  if (invoices.length === 0) {
+    return (
+      <EmptyState 
+        type="invoices"
+        primaryAction={{
+          label: "Create Invoice",
+          icon: Pencil,
+          path: "#"
+        }}
+      />
     );
   }
 
@@ -89,10 +103,16 @@ export default function InvoiceList({ invoices, isLoading, onEdit, onDelete, onU
                       </DropdownMenuItem>
                     )}
                     {(invoice.status === 'sent' || invoice.status === 'overdue') && (
-                      <DropdownMenuItem onClick={() => onUpdateStatus({ id: invoice.id, status: 'paid' })}>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Mark as Paid
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => onPayWithMpesa ? onPayWithMpesa(invoice) : null}>
+                          <Smartphone className="w-4 h-4 mr-2" />
+                          Pay with M-Pesa
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onUpdateStatus({ id: invoice.id, status: 'paid' })}>
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Mark as Paid
+                        </DropdownMenuItem>
+                      </>
                     )}
                     <DropdownMenuItem
                       onClick={() => onDelete(invoice.id)}

@@ -74,3 +74,20 @@ export const dashboardApi = {
   getFinancialSummary: (params = {}) => 
     apiClient.get('/finance/dashboard/financial-summary/', { params }),
 };
+
+// Notifications API
+export const notificationApi = {
+  getAll: (params = {}) => apiClient.get('/core/notifications/', { params }),
+  getUnreadCount: () => apiClient.get('/core/notifications/unread-count/'),
+  markAsRead: (id) => apiClient.post(`/core/notifications/${id}/read/`),
+  markAllAsRead: () => apiClient.post('/core/notifications/mark-all-read/'),
+  delete: (id) => apiClient.delete(`/core/notifications/${id}/delete/`),
+  create: (data) => apiClient.post('/core/notifications/create/', data),
+};
+
+// M-Pesa API
+export const mpesaApi = {
+  initiatePayment: (data) => apiClient.post('/finance/mpesa/initiate/', data),
+  getPayments: (params = {}) => apiClient.get('/finance/mpesa/payments/', { params }),
+  getPaymentStatus: (id) => apiClient.get(`/finance/mpesa/payments/${id}/`),
+};

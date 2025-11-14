@@ -21,9 +21,11 @@ import VoiceWaveform from '../components/voice/VoiceWaveform';
 import ConversationHistory from '../components/voice/ConversationHistory';
 import QuickCommands from '../components/voice/QuickCommands';
 import { useAuth } from '../contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function VoiceAssistant() {
   const auth = useAuth();
+  const queryClient = useQueryClient();
   const {
     currentMode,
     isRecording,
@@ -82,26 +84,65 @@ export default function VoiceAssistant() {
   const [tempElevenSimilarity, setTempElevenSimilarity] = useState((elevenLabsVoiceSettings && elevenLabsVoiceSettings.similarity_boost) || 0.75);
   const [lastPlaybackDuration, setLastPlaybackDuration] = useState(null);
 
+  // Sync userName with currently logged-in user from AuthContext
+  useEffect(() => {
+    if (auth.user) {
+      const name = auth.user.full_name || auth.user.first_name || auth.user.username || 'my friend';
+      setUserName(name);
+      console.log('🔄 KAVI: Synced user name from auth:', name);
+    }
+  }, [auth.user, setUserName]);
+
+  // Refresh financial context when user changes
+  useEffect(() => {
+    if (auth.user) {
+      loadFinancialContext();
+      console.log('🔄 KAVI: Refreshed financial context for user:', auth.user.id);
+    }
+  }, [auth.user?.id]);
+
+  // Auto-refresh KAVI when transactions/invoices change
+  // This subscribes to React Query cache and detects when data is invalidated
+  useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      // Listen for successful query updates (after mutations)
+      if (event?.type === 'updated') {
+        const queryKey = event.query.queryKey;
+        
+        // Check if it's a transaction or invoice query
+        const isRelevant = queryKey && Array.isArray(queryKey) && (
+          queryKey.includes('transactions') ||
+          queryKey.includes('invoices') ||
+          queryKey.includes('user-dashboard') ||
+          queryKey.includes('dashboard')
+        );
+        
+        if (isRelevant) {
+          console.log('📊 KAVI: Detected data update, refreshing context...', queryKey);
+          // Debounce: only refresh if last refresh was > 2 seconds ago
+          const now = Date.now();
+          if (!window._kaviLastRefresh || now - window._kaviLastRefresh > 2000) {
+            window._kaviLastRefresh = now;
+            loadFinancialContext();
+          }
+        }
+      }
+    });
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [queryClient]);
+
   // Initialize on mount - Auto-complete onboarding
   useEffect(() => {
     initialize();
-    loadFinancialContext();
     
     // Auto-complete onboarding if not done
     if (!onboardingComplete) {
-      // Get user name from profile or use default
-      base44.auth.me().then(user => {
-        const name = user?.full_name || 'my friend';
-        setUserName(name);
-      }).catch(() => {
-        // If failed, just set default name
-        setUserName('my friend');
-      });
-      
       // Initialize audio immediately
       initializeAudio();
     }
-  }, [initialize, initializeAudio, onboardingComplete, setUserName]);
+  }, [initialize, initializeAudio, onboardingComplete]);
 
   // Load Eleven Labs voices when API key is set
   useEffect(() => {
@@ -152,6 +193,8 @@ export default function VoiceAssistant() {
 
   const loadFinancialContext = async () => {
     try {
+      // Use enhanced buildFinancialContext which prioritizes React Query cache
+      // This avoids DB calls by using data already loaded in the frontend
       const context = await buildFinancialContext();
       
       // Inject role and active business context from auth
@@ -168,9 +211,15 @@ export default function VoiceAssistant() {
       };
       
       setFinancialContext(scoped);
-      console.log('✅ Kavi context updated');
+      
+      // Log data source for debugging
+      if (context?.dataSource === 'cache') {
+        console.log(' KAVI context loaded from cache (no DB calls!)');
+      } else {
+        console.log(' KAVI context loaded from API (cache miss)');
+      }
     } catch (error) {
-      console.error('❌ Error loading financial context:', error);
+      console.error(' Error loading financial context:', error);
     }
   };
 
@@ -714,6 +763,67 @@ export default function VoiceAssistant() {
           Settings
         </Button>
       </div>
+
+      {/* User Context Banner */}
+      {auth.user && financialContext && (
+        <div className="space-y-3">
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4 shadow-lg">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-lg">
+                  {(auth.user.full_name || auth.user.username || 'U')[0].toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Talking to</p>
+                  <p className="text-lg font-bold">{auth.user.full_name || auth.user.username}</p>
+                </div>
+              </div>
+              {financialContext.business && (
+                <div className="text-right">
+                  <p className="text-sm opacity-90">Business</p>
+                  <p className="font-semibold">{financialContext.business.business_name}</p>
+                </div>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-white hover:bg-white/20"
+                onClick={loadFinancialContext}
+              >
+                🔄 Refresh Data
+              </Button>
+            </div>
+          </div>
+          
+          {/* No Data Warning */}
+          {financialContext && 
+           (!financialContext.transactions || financialContext.transactions.length === 0) && 
+           (!financialContext.invoices || financialContext.invoices.length === 0) && (
+            <Alert className="bg-amber-50 border-amber-200">
+              <AlertDescription className="text-amber-800">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">⚠️</span>
+                  <div>
+                    <p className="font-semibold mb-1">No financial data found</p>
+                    <p className="text-sm">
+                      KAVI needs data to provide insights. Please:
+                    </p>
+                    <ol className="text-sm mt-2 ml-4 list-decimal space-y-1">
+                      <li>Ensure you're assigned to a business (contact admin)</li>
+                      <li>Create some transactions in the "Transactions" page</li>
+                      <li>Create some invoices in the "Invoices" page</li>
+                      <li>Click "🔄 Refresh Data" above</li>
+                    </ol>
+                    <p className="text-sm mt-2 italic">
+                      See <strong>KAVI_NO_DATA_FIX.md</strong> for detailed troubleshooting.
+                    </p>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
 
       {/* Error Alert */}
       {apiError && (

@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
     Transaction, Invoice, InvoiceItem, Budget, CashFlow, 
-    FinancialForecast, CreditScore, Supplier
+    FinancialForecast, CreditScore, Supplier, MpesaPayment
 )
 from users.models import Business, UserProfile
 
@@ -208,3 +208,30 @@ class SupplierSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class MpesaPaymentSerializer(serializers.ModelSerializer):
+    """Serializer for M-Pesa Payment model"""
+    
+    business_name = serializers.CharField(source='business.legal_name', read_only=True)
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    invoice_number = serializers.CharField(source='invoice.invoice_number', read_only=True, allow_null=True)
+    
+    class Meta:
+        model = MpesaPayment
+        fields = [
+            'id', 'business', 'user', 'business_name', 'user_name',
+            'phone_number', 'amount', 'currency', 'status',
+            'checkout_request_id', 'merchant_request_id',
+            'mpesa_receipt_number', 'transaction_date',
+            'invoice', 'invoice_number', 'transaction',
+            'account_reference', 'transaction_desc',
+            'callback_data', 'error_message',
+            'created_at', 'updated_at', 'completed_at'
+        ]
+        read_only_fields = [
+            'id', 'checkout_request_id', 'merchant_request_id',
+            'mpesa_receipt_number', 'transaction_date',
+            'callback_data', 'error_message',
+            'created_at', 'updated_at', 'completed_at'
+        ]

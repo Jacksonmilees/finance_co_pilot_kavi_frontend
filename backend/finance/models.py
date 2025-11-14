@@ -411,3 +411,58 @@ class Supplier(models.Model):
     
     def __str__(self):
         return f"{self.supplier_name} - {self.business.legal_name}"
+
+
+class MpesaPayment(models.Model):
+    """M-Pesa payment transactions"""
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('initiated', 'Initiated'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    business = models.ForeignKey('users.Business', on_delete=models.CASCADE, related_name='mpesa_payments')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='mpesa_payments')
+    
+    # Payment details
+    phone_number = models.CharField(max_length=20)
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    currency = models.CharField(max_length=3, default='KES')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # M-Pesa API response
+    checkout_request_id = models.CharField(max_length=100, blank=True, null=True)
+    merchant_request_id = models.CharField(max_length=100, blank=True, null=True)
+    mpesa_receipt_number = models.CharField(max_length=50, blank=True, null=True)
+    transaction_date = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Related resources
+    invoice = models.ForeignKey('Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='mpesa_payments')
+    transaction = models.ForeignKey('Transaction', on_delete=models.SET_NULL, null=True, blank=True, related_name='mpesa_payments')
+    
+    # Metadata
+    account_reference = models.CharField(max_length=100, blank=True)
+    transaction_desc = models.CharField(max_length=200, blank=True)
+    callback_data = models.JSONField(default=dict, blank=True)
+    error_message = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['business', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['checkout_request_id']),
+            models.Index(fields=['mpesa_receipt_number']),
+        ]
+    
+    def __str__(self):
+        return f"M-Pesa Payment: {self.amount} KES - {self.status}"

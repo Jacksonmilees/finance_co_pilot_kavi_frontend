@@ -1,6 +1,7 @@
 # backend/finance/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from . import views
 from .views import (
     TransactionViewSet, InvoiceViewSet, InvoiceItemViewSet,
     BudgetViewSet, CashFlowViewSet, FinancialForecastViewSet,
@@ -21,4 +22,9 @@ router.register(r'voice-conversations', VoiceConversationViewSet, basename='voic
 urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/', dashboard_data, name='dashboard_data'),
+    # M-Pesa endpoints
+    path('mpesa/initiate/', views.initiate_mpesa_payment, name='initiate-mpesa-payment'),
+    path('mpesa/callback/', views.mpesa_callback, name='mpesa-callback'),
+    path('mpesa/payments/', views.mpesa_payments, name='mpesa-payments'),
+    path('mpesa/payments/<uuid:payment_id>/', views.mpesa_payment_status, name='mpesa-payment-status'),
 ]

@@ -22,6 +22,7 @@ import Clients from "./pages/Clients";
 import RoleBasedRedirect from "./components/RoleBasedRedirect";
 import RootRedirect from "./components/RootRedirect";
 import { RequireAuth, RequireSuperAdmin, RequireBusinessAdmin } from "./components/guards";
+import { RequireModule } from "./components/guards/RequireModule";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import SuperAdminDashboardTest from "./pages/SuperAdminDashboardTest";
 import BusinessAdminDashboard from "./pages/BusinessAdminDashboard";
@@ -37,9 +38,11 @@ import RegisterNew from "./pages/RegisterNew";
 import RegistrationStatus from "./pages/RegistrationStatus";
 import SuperAdminApprovals from "./pages/SuperAdminApprovals";
 import RoutingDiagnostic from "./pages/RoutingDiagnostic";
+import LoginCredentials from "./pages/LoginCredentials";
 import Analytics from "./pages/admin/Analytics";
 import Security from "./pages/admin/Security";
 import AdminSettings from "./pages/admin/AdminSettings";
+import DocumentManagement from "./pages/admin/DocumentManagement";
 
 export const router = createBrowserRouter([
   // Super Admin Routes with AdminLayout (MUST be first to avoid being caught by Layout)
@@ -80,7 +83,7 @@ export const router = createBrowserRouter([
       },
       {
         path: "documents",
-        element: <div className="p-8 bg-white min-h-screen"><h1 className="text-3xl font-bold">Document Management</h1><p className="text-gray-600 mt-2">Coming soon...</p></div>,
+        element: <DocumentManagement />,
         errorElement: <ErrorBoundary />
       },
       {
@@ -96,6 +99,11 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: <AdminSettings />,
+        errorElement: <ErrorBoundary />
+      },
+      {
+        path: "module-assignment",
+        element: <ModuleAssignment />,
         errorElement: <ErrorBoundary />
       },
       {
@@ -155,42 +163,90 @@ export const router = createBrowserRouter([
       },
       { 
         path: "insights", 
-        element: <Insights />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="insights">
+              <Insights />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "proactive-alerts", 
-        element: <ProactiveAlerts />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="proactive-alerts">
+              <ProactiveAlerts />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "transactions", 
-        element: <Transactions />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="transactions">
+              <Transactions />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "invoices", 
-        element: <Invoices />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="invoices">
+              <Invoices />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "cash-flow", 
-        element: <CashFlow />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="cash-flow">
+              <CashFlow />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "suppliers", 
-        element: <Suppliers />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="suppliers">
+              <Suppliers />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "credit", 
-        element: <Credit />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="credit">
+              <Credit />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
         path: "clients", 
-        element: <Clients />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="clients">
+              <Clients />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
@@ -200,7 +256,13 @@ export const router = createBrowserRouter([
       },
       { 
         path: "voice-assistant", 
-        element: <VoiceAssistant />,
+        element: (
+          <RequireAuth>
+            <RequireModule moduleId="voice-assistant">
+              <VoiceAssistant />
+            </RequireModule>
+          </RequireAuth>
+        ),
         errorElement: <ErrorBoundary />
       },
       { 
@@ -218,6 +280,11 @@ export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+    errorElement: <ErrorBoundary />
+  },
+  {
+    path: "/credentials",
+    element: <LoginCredentials />,
     errorElement: <ErrorBoundary />
   },
   {

@@ -18,6 +18,7 @@ from .views import (
     business_detail, list_available_staff, assign_staff_to_business,
     admin_analytics, admin_settings, admin_settings_update,
     admin_security, admin_security_activity, list_registration_documents,
+    setup_mama_ochiengi_endpoint,
 )
 
 router = DefaultRouter()
@@ -80,5 +81,7 @@ urlpatterns = [
     path('admin/security/activity/', admin_security_activity, name='admin_security_activity'),
     # Documents
     path('admin/documents/', list_registration_documents, name='list_registration_documents'),
+    # Setup Mama Ochiengi (one-time setup endpoint)
+    path('admin/setup-mama-ochiengi/', setup_mama_ochiengi_endpoint, name='setup_mama_ochiengi'),
     path('', include(router.urls)),
 ]

@@ -1,0 +1,133 @@
+================================================================================
+          COPY THIS SCRIPT INTO RENDER SHELL
+================================================================================
+
+1. Go to: https://dashboard.render.com/
+2. Open your backend-kavi-sme service
+3. Click "Shell" tab
+4. Run: python manage.py shell
+5. Copy and paste EVERYTHING below:
+
+================================================================================
+
+from django.contrib.auth import get_user_model
+from users.models import Business, Membership, UserProfile
+from core.models import ModuleAssignment
+
+User = get_user_model()
+
+print("Creating Mama Ochiengi on PRODUCTION...")
+
+# Create User
+mama, created = User.objects.get_or_create(
+    username='mama_ochiengi',
+    defaults={
+        'email': 'mama.ochiengi@kisumutraders.co.ke',
+        'first_name': 'Mama',
+        'last_name': 'Ochiengi',
+        'is_active': True,
+        'is_staff': False,
+        'is_superuser': False
+    }
+)
+mama.set_password('MamaOchiengi2025!')
+mama.save()
+print(f"✓ User: {mama.username} (ID: {mama.id})")
+
+# Create Profile
+profile, _ = UserProfile.objects.get_or_create(
+    user=mama,
+    defaults={
+        'role': 'owner',
+        'phone_number': '+254720123456',
+        'country': 'Kenya',
+        'city': 'Kisumu'
+    }
+)
+print(f"✓ Profile created")
+
+# Create Business
+business, _ = Business.objects.get_or_create(
+    legal_name='Mama Ochiengi Fresh Produce Ltd',
+    defaults={
+        'owner': mama,
+        'dba_name': 'Mama Ochiengi Fresh Produce',
+        'website': 'https://mamaochiengi-produce.co.ke',
+        'year_founded': 2018,
+        'employee_count': 8,
+        'hq_city': 'Kisumu',
+        'hq_country': 'Kenya',
+        'revenue_band': '500K-1M',
+        'business_model': 'B2C',
+        'sales_motion': 'transactional',
+        'registration_number': 'BN-KSM-2018-4521'
+    }
+)
+print(f"✓ Business: {business.legal_name}")
+
+# Create Membership
+membership, _ = Membership.objects.get_or_create(
+    business=business,
+    user=mama,
+    defaults={
+        'role_in_business': 'business_admin',
+        'is_active': True
+    }
+)
+print(f"✓ Membership created")
+
+# Assign Modules
+modules = [
+    ('transactions', 'Transactions'),
+    ('invoices', 'Invoices'),
+    ('cash-flow', 'Cash Flow'),
+    ('credit', 'Credit Management'),
+    ('suppliers', 'Suppliers'),
+    ('clients', 'Clients'),
+    ('reports', 'Reports & Analytics'),
+    ('insights', 'AI Insights'),
+    ('proactive-alerts', 'Proactive Alerts'),
+    ('team', 'Team Management'),
+    ('voice-assistant', 'KAVI Voice Assistant'),
+    ('settings', 'Settings'),
+    ('budgets', 'Budgets'),
+    ('dashboard', 'Dashboard'),
+]
+
+for module_id, module_name in modules:
+    ModuleAssignment.objects.get_or_create(
+        business=business,
+        module_id=module_id,
+        defaults={
+            'module_name': module_name,
+            'enabled': True,
+            'assigned_by': mama
+        }
+    )
+
+print(f"✓ Assigned {len(modules)} modules")
+
+# Test
+from django.contrib.auth import authenticate
+test_user = authenticate(username='mama_ochiengi', password='MamaOchiengi2025!')
+
+print("\n" + "="*60)
+if test_user:
+    print("✓✓✓ SUCCESS! Mama Ochiengi ready on PRODUCTION!")
+    print("="*60)
+    print("\nLogin: mama_ochiengi")
+    print("Password: MamaOchiengi2025!")
+else:
+    print("✗ Test failed")
+print("="*60)
+
+exit()
+
+================================================================================
+
+After running this, login with:
+  Username: mama_ochiengi
+  Password: MamaOchiengi2025!
+
+================================================================================
+

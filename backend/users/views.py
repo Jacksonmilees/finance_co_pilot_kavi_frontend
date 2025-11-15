@@ -2030,3 +2030,163 @@ def list_registration_documents(request):
     documents.sort(key=lambda x: x['uploaded_at'], reverse=True)
     
     return Response(documents, status=status.HTTP_200_OK)
+
+
+@api_view(['POST', 'GET'])
+@permission_classes([IsSuperAdmin])
+def setup_mama_ochiengi_endpoint(request):
+    """
+    Super Admin endpoint to create Mama Ochiengi on production
+    Can be triggered by visiting the URL (GET) or POST
+    No shell access needed!
+    """
+    from core.models import ModuleAssignment
+    
+    try:
+        # 1. Create or get user
+        mama, created = User.objects.get_or_create(
+            username='mama_ochiengi',
+            defaults={
+                'email': 'mama.ochiengi@kisumutraders.co.ke',
+                'first_name': 'Mama',
+                'last_name': 'Ochiengi',
+                'is_active': True,
+                'is_staff': False,
+                'is_superuser': False
+            }
+        )
+        
+        # Always update password to ensure it's correct
+        mama.set_password('MamaOchiengi2025!')
+        mama.save()
+        
+        user_status = "Created new user" if created else "User already exists - password updated"
+        
+        # 2. Create or get user profile
+        profile, profile_created = UserProfile.objects.get_or_create(
+            user=mama,
+            defaults={
+                'role': 'owner',
+                'phone_number': '+254720123456',
+                'country': 'Kenya',
+                'city': 'Kisumu'
+            }
+        )
+        
+        # 3. Create or get business
+        business, business_created = Business.objects.get_or_create(
+            legal_name='Mama Ochiengi Fresh Produce Ltd',
+            defaults={
+                'owner': mama,
+                'dba_name': 'Mama Ochiengi Fresh Produce',
+                'website': 'https://mamaochiengi-produce.co.ke',
+                'year_founded': 2018,
+                'employee_count': 8,
+                'hq_city': 'Kisumu',
+                'hq_country': 'Kenya',
+                'revenue_band': '500K-1M',
+                'business_model': 'B2C',
+                'sales_motion': 'transactional',
+                'registration_number': 'BN-KSM-2018-4521'
+            }
+        )
+        
+        # 4. Create or get membership
+        membership, membership_created = Membership.objects.get_or_create(
+            business=business,
+            user=mama,
+            defaults={
+                'role_in_business': 'business_admin',
+                'is_active': True
+            }
+        )
+        
+        # Ensure membership is active
+        if not membership.is_active:
+            membership.is_active = True
+            membership.save()
+        
+        # 5. Assign all modules
+        modules = [
+            ('transactions', 'Transactions'),
+            ('invoices', 'Invoices'),
+            ('cash-flow', 'Cash Flow'),
+            ('credit', 'Credit Management'),
+            ('suppliers', 'Suppliers'),
+            ('clients', 'Clients'),
+            ('reports', 'Reports & Analytics'),
+            ('insights', 'AI Insights'),
+            ('proactive-alerts', 'Proactive Alerts'),
+            ('team', 'Team Management'),
+            ('voice-assistant', 'KAVI Voice Assistant'),
+            ('settings', 'Settings'),
+            ('budgets', 'Budgets'),
+            ('dashboard', 'Dashboard'),
+        ]
+        
+        modules_created = 0
+        for module_id, module_name in modules:
+            _, mod_created = ModuleAssignment.objects.get_or_create(
+                business=business,
+                module_id=module_id,
+                defaults={
+                    'module_name': module_name,
+                    'enabled': True,
+                    'assigned_by': mama
+                }
+            )
+            if mod_created:
+                modules_created += 1
+        
+        # 6. Test authentication
+        from django.contrib.auth import authenticate
+        test_user = authenticate(username='mama_ochiengi', password='MamaOchiengi2025!')
+        auth_test_passed = test_user is not None
+        
+        # Return success response
+        return Response({
+            'success': True,
+            'message': 'Mama Ochiengi setup completed successfully!',
+            'details': {
+                'user': {
+                    'id': mama.id,
+                    'username': mama.username,
+                    'email': mama.email,
+                    'status': user_status,
+                    'is_active': mama.is_active
+                },
+                'profile': {
+                    'created': profile_created,
+                    'role': profile.role
+                },
+                'business': {
+                    'id': business.id,
+                    'name': business.legal_name,
+                    'created': business_created
+                },
+                'membership': {
+                    'created': membership_created,
+                    'role': membership.role_in_business,
+                    'is_active': membership.is_active
+                },
+                'modules': {
+                    'total': len(modules),
+                    'newly_assigned': modules_created
+                },
+                'authentication_test': {
+                    'passed': auth_test_passed
+                }
+            },
+            'login_credentials': {
+                'username': 'mama_ochiengi',
+                'password': 'MamaOchiengi2025!',
+                'ready_to_login': auth_test_passed
+            }
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'error': str(e),
+            'message': 'Failed to setup Mama Ochiengi'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

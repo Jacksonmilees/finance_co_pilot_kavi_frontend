@@ -155,14 +155,14 @@ export default function Dashboard() {
               <h1 className="text-2xl md:text-3xl font-bold">Business Dashboard</h1>
             </div>
             <p className="text-white/80">
-              {business?.name ? `Welcome to ${business.name}` : 'Welcome to your business dashboard'}
-            </p>
-          </div>
+            {business?.name ? `Welcome to ${business.name}` : 'Welcome to your business dashboard'}
+          </p>
+        </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="bg-white/20 text-white px-3 py-1 border-white/30">
-              <Activity className="w-3 h-3 mr-1" />
-              {business?.role ? business.role.charAt(0).toUpperCase() + business.role.slice(1) : 'Active'}
-            </Badge>
+          <Activity className="w-3 h-3 mr-1" />
+          {business?.role ? business.role.charAt(0).toUpperCase() + business.role.slice(1) : 'Active'}
+        </Badge>
             <Button onClick={() => navigate('/transactions?action=create')} className="bg-white text-blue-700 hover:bg-blue-50">
               <PlusCircle className="w-4 h-4 mr-2" />
               Add Transaction

@@ -233,13 +233,13 @@ export default function Layout() {
   };
 
   const renderMenuItem = (item) => {
-    let itemUrl = typeof item.url === 'function' 
-      ? (activeBusinessId ? item.url(activeBusinessId) : '/dashboard')
-      : item.url;
-    
-    const isActive = location.pathname === itemUrl || 
-      (itemUrl === "/dashboard" && (location.pathname === "/" || location.pathname === "/dashboard")) ||
-      (itemUrl.includes("/super-admin") && location.pathname.includes("/super-admin")) ||
+                      let itemUrl = typeof item.url === 'function' 
+                        ? (activeBusinessId ? item.url(activeBusinessId) : '/dashboard')
+                        : item.url;
+                      
+                      const isActive = location.pathname === itemUrl || 
+                        (itemUrl === "/dashboard" && (location.pathname === "/" || location.pathname === "/dashboard")) ||
+                        (itemUrl.includes("/super-admin") && location.pathname.includes("/super-admin")) ||
       (itemUrl.includes("/business/") && location.pathname.includes("/business/")) ||
       (itemUrl.includes("/voice-assistant") && location.pathname.includes("/voice-assistant")) ||
       (itemUrl.includes("/transactions") && location.pathname.includes("/transactions")) ||
@@ -252,20 +252,20 @@ export default function Layout() {
       (itemUrl.includes("/proactive-alerts") && location.pathname.includes("/proactive-alerts")) ||
       (itemUrl.includes("/settings") && location.pathname.includes("/settings"));
     
-    const Icon = item.icon;
+                      const Icon = item.icon;
     
-    return (
-      <SidebarMenuItem key={item.title}>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            navigate(itemUrl);
-          }}
-          onMouseDown={(e) => e.stopPropagation()}
+                      return (
+                        <SidebarMenuItem key={item.title}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigate(itemUrl);
+                            }}
+                            onMouseDown={(e) => e.stopPropagation()}
           title={item.title}
-          className={`
+                            className={`
             w-full flex items-center justify-start group-data-[collapsible=icon]:justify-center gap-3 px-3 py-2.5 rounded-lg mb-1
             transition-all duration-200 cursor-pointer relative
             ${isActive 
@@ -276,20 +276,20 @@ export default function Layout() {
         >
           <div className={isActive ? 'text-white' : item.color}>
             <Icon className="w-5 h-5" />
-          </div>
+                            </div>
           <div className="flex-1 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
             <span className={`text-sm font-medium`}>
-              {item.title}
-            </span>
+                              {item.title}
+                            </span>
             {item.badge && (
               <Badge className="ml-auto bg-purple-500 text-white text-[10px] px-1.5 py-0.5 font-semibold">
                 {item.badge}
               </Badge>
             )}
           </div>
-        </button>
-      </SidebarMenuItem>
-    );
+                          </button>
+                        </SidebarMenuItem>
+                      );
   };
 
   return (
@@ -321,9 +321,9 @@ export default function Layout() {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "main").map(renderMenuItem)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             )}
 
             {/* AI Section */}
@@ -331,13 +331,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   AI Tools
-                </SidebarGroupLabel>
+              </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "ai").map(renderMenuItem)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             )}
 
             {/* Financial Section */}
@@ -345,13 +345,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   Finance
-                </SidebarGroupLabel>
+              </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "financial").map(renderMenuItem)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             )}
 
             {/* People Section */}
@@ -359,13 +359,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   Contacts
-                </SidebarGroupLabel>
+              </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "people").map(renderMenuItem)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             )}
 
             {/* Insights Section */}
@@ -373,13 +373,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   Intelligence
-                </SidebarGroupLabel>
+              </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "insights").map(renderMenuItem)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             )}
 
             {/* Settings Section */}
@@ -388,9 +388,9 @@ export default function Layout() {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "settings").map(renderMenuItem)}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
             )}
           </SidebarContent>
 

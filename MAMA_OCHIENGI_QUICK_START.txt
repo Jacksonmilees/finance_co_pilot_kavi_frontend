@@ -1,0 +1,48 @@
+================================================================================
+ MAMA OCHIENGI - QUICK START GUIDE
+================================================================================
+
+USERNAME: mama_ochiengi
+PASSWORD: MamaOchiengi2025!
+EMAIL: mama.ochiengi@kisumutraders.co.ke
+
+================================================================================
+
+BUSINESS: Mama Ochiengi Fresh Produce Ltd
+LOCATION: Kisumu, Kenya
+INDUSTRY: Fresh Produce Trading
+CURRENCY: Kenyan Shillings (KSh) - NOT "KES"
+
+================================================================================
+
+DATA CREATED:
+- 330+ Transactions (3 months of daily sales & expenses)
+- 25 Invoices (for B2B customers)
+- 5 Business Customers
+- 24 Monthly Budget Entries
+
+================================================================================
+
+HOW TO TEST:
+
+1. Login with credentials above
+2. Check Dashboard - you'll see revenue, expenses, and trends
+3. View Transactions page - daily produce sales and business expenses
+4. View Invoices page - customer invoices with Net 14 terms
+5. Ask KAVI questions like:
+   - "What were my total sales this month?"
+   - "Show me my biggest expenses"
+   - "Which customers owe me money?"
+   - "How am I doing against my budget?"
+
+================================================================================
+
+All amounts are in KENYAN SHILLINGS (KSh)
+Examples: "8,500 KSh" for tomatoes, "150,000 KSh" monthly produce budget
+
+================================================================================
+
+For full details, see: MAMA_OCHIENGI_CREDENTIALS.md
+
+================================================================================
+

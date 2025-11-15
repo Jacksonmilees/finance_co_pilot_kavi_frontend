@@ -115,26 +115,26 @@ export default function BusinessAdminDashboard() {
               <h1 className="text-2xl md:text-3xl font-bold">Business Dashboard</h1>
             </div>
             <p className="text-white/80">{stats?.business?.name || 'Business Overview'}</p>
-          </div>
-          <div className="flex gap-2 flex-wrap">
+        </div>
+        <div className="flex gap-2 flex-wrap">
             <Button asChild className="bg-white/10 border border-white/30 text-white hover:bg-white/20">
-              <Link to="/voice-assistant">
-                <Sparkles className="w-4 h-4 mr-2" />
-                KAVI Assistant
-              </Link>
-            </Button>
+            <Link to="/voice-assistant">
+              <Sparkles className="w-4 h-4 mr-2" />
+              KAVI Assistant
+            </Link>
+          </Button>
             <Button asChild className="bg-white/10 border border-white/30 text-white hover:bg-white/20">
-              <Link to={`/business/${activeBusinessId}/team`}>
-                <Users className="w-4 h-4 mr-2" />
-                Manage Team
-              </Link>
-            </Button>
+            <Link to={`/business/${activeBusinessId}/team`}>
+              <Users className="w-4 h-4 mr-2" />
+              Manage Team
+            </Link>
+          </Button>
             <Button asChild className="bg-white text-blue-700 hover:bg-blue-50">
-              <Link to="/settings">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
-              </Link>
-            </Button>
+            <Link to="/settings">
+              <Settings className="w-4 h-4 mr-2" />
+              Settings
+            </Link>
+          </Button>
           </div>
         </div>
       </div>

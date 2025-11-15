@@ -48,16 +48,16 @@ const Sidebar = React.forwardRef(({ className, ...props }, ref) => {
   const { open } = useSidebar()
   const collapsed = !open
   return (
-    <div
-      ref={ref}
+  <div
+    ref={ref}
       data-collapsible={collapsed ? "icon" : "expanded"}
-      className={cn(
+    className={cn(
         "group flex h-screen flex-col border-r bg-background transition-all duration-300 ease-in-out flex-shrink-0 sticky top-0",
         collapsed ? "w-16 md:w-20" : "w-64",
-        className
-      )}
-      {...props}
-    />
+      className
+    )}
+    {...props}
+  />
   )
 })
 Sidebar.displayName = "Sidebar"
@@ -105,14 +105,14 @@ const SidebarGroupLabel = React.forwardRef(({ className, ...props }, ref) => {
     return <div ref={ref} className="h-2" {...props} />
   }
   return (
-    <div
-      ref={ref}
-      className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground",
-        className
-      )}
-      {...props}
-    />
+  <div
+    ref={ref}
+    className={cn(
+      "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-muted-foreground",
+      className
+    )}
+    {...props}
+  />
   )
 })
 SidebarGroupLabel.displayName = "SidebarGroupLabel"

@@ -1,67 +1,48 @@
-import React from "react";
-import { useLocation, Outlet, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "../contexts/AuthContext";
-import { useModuleAccess } from "../hooks/useModuleAccess";
-import {
-  LayoutDashboard,
-  Receipt,
-  ArrowLeftRight,
-  TrendingUp,
-  Users,
-  CreditCard,
-  Lightbulb,
-  Settings,
-  LogOut,
-  ChevronRight,
-  Building2,
-  Sparkles,
-  AlertCircle,
-  Home,
-  Wallet,
-  FileText,
-  UserCircle,
-  BarChart3,
-  Zap
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarHeader,
-  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
+  SidebarTrigger
 } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
-import BusinessSwitcher from "../components/BusinessSwitcher";
-import NotificationCenter from "../components/notifications/NotificationCenter";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  AlertCircle,
+  BarChart3,
+  Building2,
+  CreditCard,
+  FileText,
+  Home,
+  LogOut,
+  Settings,
+  TrendingUp,
+  UserCircle,
+  Users,
+  Wallet,
+  Zap
+} from "lucide-react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { useModuleAccess } from "../hooks/useModuleAccess";
 
 // Navigation organized by category - will be filtered based on role
 const baseNavigationItems = [
-  // Dashboard links based on role
+  // Dashboard link - unified for all roles
   // Note: Super Admin uses separate AdminLayout, not this Layout
-  {
-    title: "Dashboard",
-    url: (businessId) => `/business/${businessId}/dashboard`,
-    icon: Home,
-    color: "text-blue-400",
-    category: "main",
-    roles: ["business_admin"],
-    dynamic: true
-  },
   {
     title: "Dashboard",
     url: "/dashboard",
     icon: Home,
     color: "text-blue-400",
     category: "main",
-    roles: ["staff", "viewer"]
+    roles: ["business_admin", "staff", "viewer"]
   },
   {
     title: "KAVI Assistant",
@@ -75,7 +56,7 @@ const baseNavigationItems = [
     module_id: "voice-assistant",
     required: true
   },
-  
+
   // Financial Management
   {
     title: "Transactions",
@@ -113,7 +94,7 @@ const baseNavigationItems = [
     roles: ["super_admin", "business_admin"],
     module_id: "credit"
   },
-  
+
   // People & Relationships
   {
     title: "Suppliers",
@@ -133,7 +114,7 @@ const baseNavigationItems = [
     roles: ["super_admin", "business_admin", "staff"],
     module_id: "clients"
   },
-  
+
   // Insights & Alerts
   {
     title: "Insights",
@@ -153,7 +134,7 @@ const baseNavigationItems = [
     roles: ["super_admin", "business_admin"],
     module_id: "proactive-alerts"
   },
-  
+
   // Settings
   {
     title: "Settings",
@@ -190,31 +171,31 @@ export default function Layout() {
   // Filter navigation items based on user role AND module access
   const navigationItems = baseNavigationItems.filter(item => {
     if (!item.roles || item.roles.length === 0) return true; // No roles specified means accessible to all authenticated
-    
+
     const userIsSuperAdmin = isSuperAdmin();
     const userIsBusinessAdmin = isBusinessAdmin(activeBusinessId);
     const userHasMemberships = user?.memberships?.length > 0;
-    
+
     // Role check first
     let hasRoleAccess = false;
-    
+
     // Super admins have access to all items that include "super_admin" in roles
     if (userIsSuperAdmin && item.roles.includes("super_admin")) {
       hasRoleAccess = true;
     }
-    
+
     // Business admins have access to items that include "business_admin"
     if (userIsBusinessAdmin && item.roles.includes("business_admin")) {
       hasRoleAccess = true;
     }
-    
+
     // Staff and viewer roles - check if user has any business membership
     if (userHasMemberships && (item.roles.includes("staff") || item.roles.includes("viewer"))) {
       hasRoleAccess = true;
     }
-    
+
     if (!hasRoleAccess) return false;
-    
+
     // Module access check (if module_id is defined)
     if (item.module_id) {
       // Required modules are always accessible
@@ -222,7 +203,7 @@ export default function Layout() {
       // Check module access
       return hasModuleAccess(item.module_id);
     }
-    
+
     return true;
   });
 
@@ -233,13 +214,13 @@ export default function Layout() {
   };
 
   const renderMenuItem = (item) => {
-                      let itemUrl = typeof item.url === 'function' 
-                        ? (activeBusinessId ? item.url(activeBusinessId) : '/dashboard')
-                        : item.url;
-                      
-                      const isActive = location.pathname === itemUrl || 
-                        (itemUrl === "/dashboard" && (location.pathname === "/" || location.pathname === "/dashboard")) ||
-                        (itemUrl.includes("/super-admin") && location.pathname.includes("/super-admin")) ||
+    let itemUrl = typeof item.url === 'function'
+      ? (activeBusinessId ? item.url(activeBusinessId) : '/dashboard')
+      : item.url;
+
+    const isActive = location.pathname === itemUrl ||
+      (itemUrl === "/dashboard" && (location.pathname === "/" || location.pathname === "/dashboard")) ||
+      (itemUrl.includes("/super-admin") && location.pathname.includes("/super-admin")) ||
       (itemUrl.includes("/business/") && location.pathname.includes("/business/")) ||
       (itemUrl.includes("/voice-assistant") && location.pathname.includes("/voice-assistant")) ||
       (itemUrl.includes("/transactions") && location.pathname.includes("/transactions")) ||
@@ -251,45 +232,49 @@ export default function Layout() {
       (itemUrl.includes("/insights") && location.pathname.includes("/insights")) ||
       (itemUrl.includes("/proactive-alerts") && location.pathname.includes("/proactive-alerts")) ||
       (itemUrl.includes("/settings") && location.pathname.includes("/settings"));
-    
-                      const Icon = item.icon;
-    
-                      return (
-                        <SidebarMenuItem key={item.title}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navigate(itemUrl);
-                            }}
-                            onMouseDown={(e) => e.stopPropagation()}
+
+    const Icon = item.icon;
+
+    // Create a unique key by combining multiple unique identifiers
+    // This handles cases where we have multiple items with the same title (e.g., Dashboard for different roles)
+    const uniqueKey = `${item.category}-${itemUrl}-${item.title}-${item.roles?.[0] || 'default'}`;
+
+    return (
+      <SidebarMenuItem key={uniqueKey}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            navigate(itemUrl);
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
           title={item.title}
-                            className={`
+          className={`
             w-full flex items-center justify-start group-data-[collapsible=icon]:justify-center gap-3 px-3 py-2.5 rounded-lg mb-1
             transition-all duration-200 cursor-pointer relative
-            ${isActive 
-              ? 'bg-blue-600 text-white shadow-md' 
+            ${isActive
+              ? 'bg-blue-600 text-white shadow-md'
               : 'text-gray-400 hover:bg-gray-800 hover:text-white'}
           `}
           style={{ pointerEvents: 'auto', zIndex: 1000 }}
         >
           <div className={isActive ? 'text-white' : item.color}>
             <Icon className="w-5 h-5" />
-                            </div>
+          </div>
           <div className="flex-1 flex items-center gap-2 group-data-[collapsible=icon]:hidden">
             <span className={`text-sm font-medium`}>
-                              {item.title}
-                            </span>
+              {item.title}
+            </span>
             {item.badge && (
               <Badge className="ml-auto bg-purple-500 text-white text-[10px] px-1.5 py-0.5 font-semibold">
                 {item.badge}
               </Badge>
             )}
           </div>
-                          </button>
-                        </SidebarMenuItem>
-                      );
+        </button>
+      </SidebarMenuItem>
+    );
   };
 
   return (
@@ -310,7 +295,7 @@ export default function Layout() {
               <SidebarTrigger className="text-gray-300 hover:text-white hover:bg-gray-700 p-2 rounded-lg transition-colors flex-shrink-0" />
             </div>
           </SidebarHeader>
-          
+
           <SidebarContent className="p-2 flex-1 overflow-y-auto custom-scrollbar">
             {/* Main Section */}
             {navigationItems.filter(item => item.category === "main").length > 0 && (
@@ -321,9 +306,9 @@ export default function Layout() {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "main").map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
 
             {/* AI Section */}
@@ -331,13 +316,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   AI Tools
-              </SidebarGroupLabel>
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "ai").map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
 
             {/* Financial Section */}
@@ -345,13 +330,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   Finance
-              </SidebarGroupLabel>
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "financial").map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
 
             {/* People Section */}
@@ -359,13 +344,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   Contacts
-              </SidebarGroupLabel>
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "people").map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
 
             {/* Insights Section */}
@@ -373,13 +358,13 @@ export default function Layout() {
               <SidebarGroup className="mb-4">
                 <SidebarGroupLabel className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-3 py-2 mb-1">
                   Intelligence
-              </SidebarGroupLabel>
+                </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "insights").map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
 
             {/* Settings Section */}
@@ -388,9 +373,9 @@ export default function Layout() {
                 <SidebarGroupContent>
                   <SidebarMenu>
                     {navigationItems.filter(item => item.category === "settings").map(renderMenuItem)}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
             )}
           </SidebarContent>
 

@@ -1,20 +1,19 @@
-import React, { useState } from "react";
-import apiClient from "../lib/apiClient";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { Plus, Download } from "lucide-react";
-import { format } from "date-fns";
-import { useAuth } from "../contexts/AuthContext";
-import { CardSkeleton, TableSkeleton } from "../components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
+import { Download, Plus } from "lucide-react";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { CardSkeleton, TableSkeleton } from "../components/ui/skeleton";
+import { useAuth } from "../contexts/AuthContext";
+import apiClient from "../lib/apiClient";
 
+import TransactionFilters from "../components/transactions/TransactionFilters";
 import TransactionForm from "../components/transactions/TransactionForm";
 import TransactionList from "../components/transactions/TransactionList";
-import TransactionFilters from "../components/transactions/TransactionFilters";
 import TransactionStats from "../components/transactions/TransactionStats";
-import EmptyState from "../components/ui/EmptyState";
 
 export default function Transactions() {
   const [showForm, setShowForm] = useState(false);
@@ -28,50 +27,81 @@ export default function Transactions() {
   const businesses = getBusinesses();
   const businessId = activeBusinessId || businesses[0]?.id;
 
+  // ========== DEBUG LOGGING ==========
+  console.log('=== TRANSACTIONS PAGE DEBUG ===');
+  console.log('1. User:', user);
+  console.log('2. User ID:', user?.id);
+  console.log('3. Businesses from getBusinesses():', businesses);
+  console.log('4. Active Business ID:', activeBusinessId);
+  console.log('5. Computed businessId:', businessId);
+  console.log('6. Query enabled?:', !!businessId && !!user?.id);
+  console.log('================================');
+  // ===================================
+
+
   const { data: transactions = [], isLoading, error: transactionsError } = useQuery({
     queryKey: ['transactions', businessId, user?.id], // Include user ID in cache key
     queryFn: async () => {
       if (!businessId) {
+        console.warn('⚠️ No businessId provided');
         return [];
       }
       if (!user?.id) {
-        console.warn('User not authenticated, cannot fetch transactions');
+        console.warn('⚠️ User not authenticated, cannot fetch transactions');
         return [];
       }
       try {
-        // Pass BOTH business and user ID to backend for proper filtering
-        const params = { 
-          business: businessId,
-          user: user.id  // ✅ Backend should filter by user
+        // Pass business ID to backend - backend will handle user filtering based on auth
+        const params = {
+          business: businessId
         };
+
+        console.log('📤 Fetching transactions with params:', params);
         const result = await apiClient.getTransactions(params);
-        // Ensure we have an array
-        const transactionArray = Array.isArray(result) ? result : (result?.results || result?.transactions || []);
-        
-        // Double-check filtering on frontend (defense in depth)
-        const userTransactions = transactionArray.filter(tx => {
-          const txUserId = tx.user || tx.user_id || tx.user?.id;
-          return txUserId && String(txUserId) === String(user.id);
-        });
-        
-        console.log(`✅ Loaded ${userTransactions.length} transactions for user ${user.id} in business ${businessId}`);
-        return userTransactions;
+        console.log('📥 Raw API response:', result);
+
+        // Handle different response formats from backend
+        let transactionArray = [];
+
+        if (Array.isArray(result)) {
+          // Backend returned array directly
+          transactionArray = result;
+        } else if (result?.results) {
+          // Paginated response
+          transactionArray = Array.isArray(result.results) ? result.results : [];
+        } else if (result?.data) {
+          // Wrapped in data field
+          transactionArray = Array.isArray(result.data) ? result.data : [];
+        } else if (result?.transactions) {
+          // Wrapped in transactions field
+          transactionArray = Array.isArray(result.transactions) ? result.transactions : [];
+        } else {
+          console.warn('⚠️ Unexpected response format:', result);
+          transactionArray = [];
+        }
+
+        console.log(`✅ Loaded ${transactionArray.length} transactions for business ${businessId}`);
+        console.log('First transaction sample:', transactionArray[0]);
+
+        return transactionArray;
       } catch (error) {
         console.error('❌ Error fetching transactions:', error);
         console.error('Error details:', error.response?.data || error.message);
-        toast.error('Failed to load transactions. Please try again.');
+        if (error.response?.status !== 401) {
+          toast.error('Failed to load transactions. Please try again.');
+        }
         return [];
       }
     },
     enabled: !!businessId && !!user?.id,
     initialData: [],
-    refetchOnMount: false, // Use cache, don't refetch on mount
-    refetchOnWindowFocus: false, // Use cache, don't refetch on focus
-    staleTime: 30 * 60 * 1000, // 30 minutes - cache for 30 minutes
+    refetchOnMount: true, // Refetch on mount to ensure fresh data
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    staleTime: 5 * 60 * 1000, // 5 minutes - consider data stale after 5 mins
     gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache
     retry: 1, // Retry once on failure
   });
-  
+
   if (!businessId) {
     return (
       <div className="p-4 md:p-8 space-y-6 bg-white min-h-screen">
@@ -91,32 +121,32 @@ export default function Transactions() {
       if (!user?.id) {
         throw new Error('User not authenticated. Please log in.');
       }
-      
+
       // Validate and set transaction_type (required field)
       const transactionType = data.type || data.transaction_type || 'expense';
       const validTypes = ['income', 'expense', 'transfer', 'investment', 'loan', 'refund'];
       const finalType = validTypes.includes(transactionType) ? transactionType : 'expense';
-      
+
       // Validate and set payment_method (required field)
       const paymentMethod = data.source || data.payment_method || 'mpesa';
       const validMethods = ['mpesa', 'bank_transfer', 'cash', 'card', 'cheque', 'other'];
       const finalPaymentMethod = validMethods.includes(paymentMethod) ? paymentMethod : 'mpesa';
-      
+
       // Validate amount
       const amount = parseFloat(data.amount);
       if (!amount || amount <= 0 || isNaN(amount)) {
         throw new Error('Amount must be greater than 0');
       }
-      
+
       // Ensure description is not empty (required field)
       const description = (data.description || data.category || 'Transaction').trim();
       if (!description) {
         throw new Error('Description is required');
       }
-      
+
       // Format transaction_date properly - backend expects ISO datetime string with timezone
       let transactionDate = data.transaction_date;
-      
+
       // Convert date string to proper ISO datetime format with timezone
       if (!transactionDate) {
         // Use current time if no date provided
@@ -155,7 +185,7 @@ export default function Transactions() {
           transactionDate = new Date().toISOString();
         }
       }
-      
+
       const transactionData = {
         business: businessId,
         user: user.id,
@@ -168,14 +198,14 @@ export default function Transactions() {
         transaction_date: transactionDate,
         status: 'completed'
       };
-      
+
       // Add optional fields only if they exist
       if (data.reference_number) transactionData.reference_number = data.reference_number;
       if (data.external_id) transactionData.external_id = data.external_id;
       if (data.supplier) transactionData.supplier = data.supplier;
       if (data.customer) transactionData.customer = data.customer;
       if (data.invoice) transactionData.invoice = data.invoice;
-      
+
       console.log('📤 Creating transaction:', JSON.stringify(transactionData, null, 2));
       console.log('📅 Transaction date format:', transactionDate, 'Length:', transactionDate?.length);
       try {
@@ -206,7 +236,7 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      
+
       // CRITICAL: Invalidate KAVI's financial context cache
       // This ensures KAVI picks up new data immediately
       if (businessId) {
@@ -214,11 +244,11 @@ export default function Transactions() {
         queryClient.invalidateQueries({ queryKey: ['transactions', businessId, user?.id] });
         queryClient.invalidateQueries({ queryKey: ['cash-flow', businessId] });
       }
-      
+
       // Force refetch all data
       queryClient.refetchQueries({ queryKey: ['transactions'] });
       queryClient.refetchQueries({ queryKey: ['user-dashboard'] });
-      
+
       setShowForm(false);
       setEditingTransaction(null);
       toast.success('Transaction created successfully! KAVI data updated.');
@@ -226,14 +256,14 @@ export default function Transactions() {
     onError: (error) => {
       console.error('❌ Transaction creation error:', error);
       console.error('Full error object:', error);
-      
+
       // Extract error message from various possible locations
       let errorMessage = 'Failed to create transaction';
       const errorData = error.response?.data || error.responseData;
-      
+
       if (errorData) {
         console.error('Error response data:', JSON.stringify(errorData, null, 2));
-        
+
         // Try different error message formats
         if (typeof errorData === 'string') {
           errorMessage = errorData;
@@ -244,16 +274,16 @@ export default function Transactions() {
         } else if (errorData.message) {
           errorMessage = errorData.message;
         } else if (errorData.transaction_type) {
-          errorMessage = Array.isArray(errorData.transaction_type) 
-            ? errorData.transaction_type[0] 
+          errorMessage = Array.isArray(errorData.transaction_type)
+            ? errorData.transaction_type[0]
             : errorData.transaction_type;
         } else if (errorData.description) {
-          errorMessage = Array.isArray(errorData.description) 
-            ? errorData.description[0] 
+          errorMessage = Array.isArray(errorData.description)
+            ? errorData.description[0]
             : errorData.description;
         } else if (errorData.payment_method) {
-          errorMessage = Array.isArray(errorData.payment_method) 
-            ? errorData.payment_method[0] 
+          errorMessage = Array.isArray(errorData.payment_method)
+            ? errorData.payment_method[0]
             : errorData.payment_method;
         } else {
           errorMessage = JSON.stringify(errorData);
@@ -261,7 +291,7 @@ export default function Transactions() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       console.error('Final error message:', errorMessage);
       toast.error(errorMessage);
     }
@@ -276,14 +306,14 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      
+
       // CRITICAL: Invalidate KAVI's financial context cache
       if (businessId) {
         queryClient.invalidateQueries({ queryKey: ['transactions', businessId] });
         queryClient.invalidateQueries({ queryKey: ['transactions', businessId, user?.id] });
         queryClient.invalidateQueries({ queryKey: ['cash-flow', businessId] });
       }
-      
+
       setShowForm(false);
       setEditingTransaction(null);
       toast.success('Transaction updated successfully! KAVI data updated.');
@@ -302,14 +332,14 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['user-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      
+
       // CRITICAL: Invalidate KAVI's financial context cache
       if (businessId) {
         queryClient.invalidateQueries({ queryKey: ['transactions', businessId] });
         queryClient.invalidateQueries({ queryKey: ['transactions', businessId, user?.id] });
         queryClient.invalidateQueries({ queryKey: ['cash-flow', businessId] });
       }
-      
+
       toast.success('Transaction deleted successfully! KAVI data updated.');
     },
     onError: (error) => {
@@ -331,11 +361,11 @@ export default function Transactions() {
   };
 
   const filteredTransactions = transactions.filter(t => {
-    const typeMatch = filters.type === "all" || 
+    const typeMatch = filters.type === "all" ||
       (t.transaction_type || t.type) === filters.type;
-    const categoryMatch = filters.category === "all" || 
+    const categoryMatch = filters.category === "all" ||
       (t.category || '') === filters.category;
-    const sourceMatch = filters.source === "all" || 
+    const sourceMatch = filters.source === "all" ||
       (t.payment_method || t.source) === filters.source;
     const queryMatch = !searchQuery || (t.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     const txDateStr = t.transaction_date || '';
@@ -455,6 +485,14 @@ export default function Transactions() {
           isSubmitting={createMutation.isPending || updateMutation.isPending}
         />
       )}
+
+      {/* DEBUG: Log before rendering TransactionList */}
+      {console.log('About to render TransactionList with:', {
+        filteredCount: filteredTransactions?.length,
+        rawCount: transactions?.length,
+        isLoading,
+        sample: filteredTransactions?.[0]
+      })}
 
       <TransactionList
         transactions={filteredTransactions}

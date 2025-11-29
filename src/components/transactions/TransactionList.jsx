@@ -1,14 +1,15 @@
-import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { format } from "date-fns";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import EmptyState from "@/components/ui/EmptyState";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format } from "date-fns";
+import { ArrowDownRight, ArrowUpRight, Pencil, Trash2 } from "lucide-react";
 
 export default function TransactionList({ transactions, isLoading, onEdit, onDelete }) {
+  // DEBUG: Log what we receive
+  console.log('TransactionList received:', { transactionCount: transactions?.length, isLoading, firstTransaction: transactions?.[0] });
   if (isLoading) {
     return (
       <Card className="border-none shadow-lg">
@@ -23,7 +24,7 @@ export default function TransactionList({ transactions, isLoading, onEdit, onDel
 
   if (transactions.length === 0) {
     return (
-      <EmptyState 
+      <EmptyState
         type="transactions"
         primaryAction={{
           label: "Add Transaction",
@@ -61,12 +62,12 @@ export default function TransactionList({ transactions, isLoading, onEdit, onDel
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {transaction.type === 'income' ? (
+                      {(transaction.transaction_type || transaction.type) === 'income' ? (
                         <ArrowUpRight className="w-4 h-4 text-green-600" />
                       ) : (
                         <ArrowDownRight className="w-4 h-4 text-red-600" />
                       )}
-                      <span className="capitalize">{transaction.type}</span>
+                      <span className="capitalize">{transaction.transaction_type || transaction.type}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -76,10 +77,9 @@ export default function TransactionList({ transactions, isLoading, onEdit, onDel
                   </TableCell>
                   <TableCell>{transaction.description || '-'}</TableCell>
                   <TableCell>{transaction.party_name || '-'}</TableCell>
-                  <TableCell className={`font-bold ${
-                    transaction.type === 'income' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {transaction.type === 'income' ? '+' : '-'}KES {transaction.amount.toLocaleString()}
+                  <TableCell className={`font-bold ${(transaction.transaction_type || transaction.type) === 'income' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                    {(transaction.transaction_type || transaction.type) === 'income' ? '+' : '-'}KES {transaction.amount.toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">

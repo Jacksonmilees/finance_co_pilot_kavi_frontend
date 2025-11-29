@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Download, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { CardSkeleton, TableSkeleton } from "../components/ui/skeleton";
 import { useAuth } from "../contexts/AuthContext";
@@ -42,12 +42,16 @@ export default function Transactions() {
   const { data: transactions = [], isLoading, error: transactionsError } = useQuery({
     queryKey: ['transactions', businessId, user?.id], // Include user ID in cache key
     queryFn: async () => {
+      console.log('🔍 TRANSACTION QUERY FUNCTION CALLED');
+      console.log('   businessId:', businessId);
+      console.log('   user?.id:', user?.id);
+
       if (!businessId) {
-        console.warn('⚠️ No businessId provided');
+        console.error('❌ CANNOT FETCH: No businessId provided');
         return [];
       }
       if (!user?.id) {
-        console.warn('⚠️ User not authenticated, cannot fetch transactions');
+        console.error('❌ CANNOT FETCH: User not authenticated');
         return [];
       }
       try {
@@ -57,35 +61,53 @@ export default function Transactions() {
         };
 
         console.log('📤 Fetching transactions with params:', params);
+        console.log('📍 API endpoint will be: /finance/transactions/?business=' + businessId);
+
         const result = await apiClient.getTransactions(params);
+
+        console.log('📥 Raw API response type:', typeof result);
         console.log('📥 Raw API response:', result);
+        console.log('📥 Is Array?:', Array.isArray(result));
+        console.log('📥 Has .results?:', !!result?.results);
+        console.log('📥 Has .data?:', !!result?.data);
 
         // Handle different response formats from backend
         let transactionArray = [];
 
         if (Array.isArray(result)) {
           // Backend returned array directly
+          console.log('✅ Response is direct array');
           transactionArray = result;
-        } else if (result?.results) {
+        } else if (result?.results && Array.isArray(result.results)) {
           // Paginated response
-          transactionArray = Array.isArray(result.results) ? result.results : [];
-        } else if (result?.data) {
+          console.log('✅ Response has paginated .results');
+          transactionArray = result.results;
+        } else if (result?.data && Array.isArray(result.data)) {
           // Wrapped in data field
-          transactionArray = Array.isArray(result.data) ? result.data : [];
-        } else if (result?.transactions) {
+          console.log('✅ Response wrapped in .data');
+          transactionArray = result.data;
+        } else if (result?.transactions && Array.isArray(result.transactions)) {
           // Wrapped in transactions field
-          transactionArray = Array.isArray(result.transactions) ? result.transactions : [];
+          console.log('✅ Response wrapped in .transactions');
+          transactionArray = result.transactions;
         } else {
-          console.warn('⚠️ Unexpected response format:', result);
+          console.error('⚠️ UNEXPECTED RESPONSE FORMAT!');
+          console.error('Response structure:', Object.keys(result || {}));
+          console.error('Full response:', JSON.stringify(result, null, 2));
           transactionArray = [];
         }
 
         console.log(`✅ Loaded ${transactionArray.length} transactions for business ${businessId}`);
-        console.log('First transaction sample:', transactionArray[0]);
+        if (transactionArray.length > 0) {
+          console.log('First transaction sample:', transactionArray[0]);
+        } else {
+          console.warn('⚠️ Transaction array is EMPTY');
+        }
 
         return transactionArray;
       } catch (error) {
         console.error('❌ Error fetching transactions:', error);
+        console.error('Error status:', error.response?.status);
         console.error('Error details:', error.response?.data || error.message);
         if (error.response?.status !== 401) {
           toast.error('Failed to load transactions. Please try again.');
@@ -94,13 +116,22 @@ export default function Transactions() {
       }
     },
     enabled: !!businessId && !!user?.id,
-    initialData: [],
-    refetchOnMount: true, // Refetch on mount to ensure fresh data
+    refetchOnMount: 'always', // ALWAYS refetch on mount to ensure fresh data
     refetchOnWindowFocus: false, // Don't refetch on window focus
-    staleTime: 5 * 60 * 1000, // 5 minutes - consider data stale after 5 mins
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache
+    staleTime: 0, // Consider data stale immediately to force fresh fetches
+    gcTime: 5 * 60 * 1000, // 5 minutes - keep in cache for 5 mins
     retry: 1, // Retry once on failure
   });
+
+  // Force refetch when businessId or user changes
+  useEffect(() => {
+    console.log('🔄 useEffect triggered - businessId or user changed');
+    console.log('   businessId:', businessId, 'user?.id:', user?.id);
+    if (businessId && user?.id) {
+      console.log('🚀 Forcing query refetch...');
+      queryClient.invalidateQueries({ queryKey: ['transactions', businessId, user?.id] });
+    }
+  }, [businessId, user?.id, queryClient]);
 
   if (!businessId) {
     return (
